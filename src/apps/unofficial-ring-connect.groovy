@@ -33,6 +33,9 @@
  *              Handled malformed user JSON coming from IFTTT gracefully
  *              Fixed mapping for original Stick Up Cam
  *              Added some snapshot image calls (these won't work until HE changes their async methods to support images)
+ *  2020-02-29: Chime Pro v2 support
+ *              Removed session functionality since it's no longer needed
+ *              Changed namespace
  *
  *
  */
@@ -43,7 +46,7 @@ import groovy.transform.Field
 
 definition(
   name: "Unofficial Ring Connect",
-  namespace: "codahq-hubitat",
+  namespace: "ring-hubitat-codahq",
   author: "Ben Rimmasch (codahq)",
   description: "Service Manager for Ring Alarm, Smart Lighting, Floodlights, Spotlights, Chimes, Cameras, and Doorbells",
   category: "Convenience",
@@ -191,7 +194,7 @@ def ifttt() {
 
   if (tokenReset) {
     app.updateSetting("tokenReset", false)
-    state.accessToken = null;
+    state.accessToken = null
     createAccessToken()
   }
 
@@ -270,19 +273,6 @@ def ifttt() {
     }
 
   }
-}
-
-def getRINGABLES() {
-  return [
-    "doorbell",
-    "doorbell_v3",
-    "doorbell_v4",
-    "doorbell_v5",
-    "doorbell_portal",
-    "lpd_v1",
-    "lpd_v2",
-    "jbox_v1"
-  ]
 }
 
 def pollingPage() {
@@ -608,7 +598,7 @@ def addDevices() {
         log.warn "Creating a ${DEVICE_TYPES[selectedDevice.kind].name} with dni: ${getFormattedDNI(selectedDevice.id)}"
 
         try {
-          def newDevice = addChildDevice("codahq-hubitat", DEVICE_TYPES[selectedDevice.kind].driver, getFormattedDNI(selectedDevice.id), selectedDevice?.hub, [
+          def newDevice = addChildDevice("ring-hubitat-codahq", DEVICE_TYPES[selectedDevice.kind].driver, getFormattedDNI(selectedDevice.id), selectedDevice?.hub, [
             "label": selectedDevice.id == RING_API_DNI ? DEVICE_TYPES[selectedDevice.kind].driver : (selectedDevice?.name ?: DEVICE_TYPES[selectedDevice.kind].name),
             "data": [
               "device_id": selectedDevice.id,
@@ -709,29 +699,45 @@ private getRING_API_DNI() {
   return "WS_API_DNI"
 }
 
+def getRINGABLES() {
+  return [
+    "doorbell",
+    "doorbell_v3",
+    "doorbell_v4",
+    "doorbell_v5",
+    "doorbell_portal",
+    "doorbell_scallop_lite",
+    "lpd_v1",
+    "lpd_v2",
+    "jbox_v1"
+  ]
+}
+
 private getDEVICE_TYPES() {
   return [
 
-    "hp_cam_v1": [name: "Ring Floodlight Cam", driver: "Ring Generic Light with Siren", dingable: true],
-    "hp_cam_v2": [name: "Ring Spotlight Cam Wired", driver: "Ring Generic Light with Siren", dingable: true],
-    "floodlight_v2": [name: "Ring Floodlight Cam Wired", driver: "Ring Generic Light with Siren", dingable: true],
-    "stickup_cam": [name: "Ring Original Stick Up Cam", driver: "Ring Generic Camera", dingable: true],
-    "stickup_cam_v3": [name: "Ring Stick Up Cam", driver: "Ring Generic Camera", dingable: true],
-    "stickup_cam_v4": [name: "Ring Spotlight Cam Battery", driver: "Ring Generic Light", dingable: true],
-    "stickup_cam_lunar": [name: "Ring Stick Up Cam Battery", driver: "Ring Generic Camera with Siren", dingable: true],
-    "cocoa_camera": [name: "Ring Stick Up Cam Battery", driver: "Ring Generic Camera with Siren", dingable: true],
-    "stickup_cam_elite": [name: "Ring Stick Up Cam Wired", driver: "Ring Generic Camera with Siren", dingable: true],
-    "stickup_cam_mini": [name: "Ring Indoor Cam", driver: "Ring Generic Camera with Siren", dingable: true],
-    "doorbell": [name: "Ring Video Doorbell", driver: "Ring Generic Camera", dingable: true],
-    "doorbell_v3": [name: "Ring Video Doorbell", driver: "Ring Generic Camera", dingable: true],
-    "doorbell_v4": [name: "Ring Video Doorbell 2", driver: "Ring Generic Camera", dingable: true],
-    "doorbell_v5": [name: "Ring Video Doorbell 2", driver: "Ring Generic Camera", dingable: true],
-    "doorbell_portal": [name: "Ring Peephole Cam", driver: "Ring Generic Camera", dingable: true],
-    "lpd_v1": [name: "Ring Video Doorbell Pro", driver: "Ring Generic Camera", dingable: true],
-    "lpd_v2": [name: "Ring Video Doorbell Pro 2", driver: "Ring Generic Camera", dingable: true],
-    "jbox_v1": [name: "Ring Video Doorbell Elite", driver: "Ring Generic Camera", dingable: true],
-    "chime": [name: "Ring Chime", driver: "Ring Generic Chime", dingable: false],
-    "chime_pro": [name: "Ring Chime Pro", driver: "Ring Generic Chime", dingable: false],
+    "hp_cam_v1": [name: "Ring Floodlight Cam", driver: "Ring Virtual Light with Siren", dingable: true],
+    "hp_cam_v2": [name: "Ring Spotlight Cam Wired", driver: "Ring Virtual Light with Siren", dingable: true],
+    "floodlight_v2": [name: "Ring Floodlight Cam Wired", driver: "Ring Virtual Light with Siren", dingable: true],
+    "stickup_cam": [name: "Ring Original Stick Up Cam", driver: "Ring Virtual Camera", dingable: true],
+    "stickup_cam_v3": [name: "Ring Stick Up Cam", driver: "Ring Virtual Camera", dingable: true],
+    "stickup_cam_v4": [name: "Ring Spotlight Cam Battery", driver: "Ring Virtual Light", dingable: true],
+    "stickup_cam_lunar": [name: "Ring Stick Up Cam Battery", driver: "Ring Virtual Camera with Siren", dingable: true],
+    "cocoa_camera": [name: "Ring Stick Up Cam Battery", driver: "Ring Virtual Camera with Siren", dingable: true],
+    "stickup_cam_elite": [name: "Ring Stick Up Cam Wired", driver: "Ring Virtual Camera with Siren", dingable: true],
+    "stickup_cam_mini": [name: "Ring Indoor Cam", driver: "Ring Virtual Camera with Siren", dingable: true],
+    "doorbell": [name: "Ring Video Doorbell", driver: "Ring Virtual Camera", dingable: true],
+    "doorbell_v3": [name: "Ring Video Doorbell", driver: "Ring Virtual Camera", dingable: true],
+    "doorbell_v4": [name: "Ring Video Doorbell 2", driver: "Ring Virtual Camera", dingable: true],
+    "doorbell_v5": [name: "Ring Video Doorbell 2", driver: "Ring Virtual Camera", dingable: true],
+    "doorbell_scallop_lite": [name: "Ring Video Doorbell 3", driver: "Ring Virtual Camera", dingable: true],
+    "doorbell_portal": [name: "Ring Peephole Cam", driver: "Ring Virtual Camera", dingable: true],
+    "lpd_v1": [name: "Ring Video Doorbell Pro", driver: "Ring Virtual Camera", dingable: true],
+    "lpd_v2": [name: "Ring Video Doorbell Pro 2", driver: "Ring Virtual Camera", dingable: true],
+    "jbox_v1": [name: "Ring Video Doorbell Elite", driver: "Ring Virtual Camera", dingable: true],
+    "chime": [name: "Ring Chime", driver: "Ring Virtual Chime", dingable: false],
+    "chime_pro": [name: "Ring Chime Pro", driver: "Ring Virtual Chime", dingable: false],
+    "chime_pro_v2": [name: "Ring Chime Pro (v2)", driver: "Ring Virtual Chime", dingable: false],
     "base_station_v1": [name: "Ring Alarm (API Device)", driver: "Ring API Virtual Device", dingable: false],
     "beams_bridge_v1": [name: "Ring Bridge (API Device)", driver: "Ring API Virtual Device", dingable: false]
 
@@ -1034,9 +1040,6 @@ def authenticate(twoFactorCode) {
     return result
   }
   if (result) {
-    //simpleRequest("session")
-    //return state.authentication_token
-    //TMP: trying without session
     return state.access_token
   }
 }
@@ -1139,11 +1142,6 @@ def doSynchronousAction(type, method, params) {
       logInfo "Not authenticated!"
       state.access_token = "EMPTY"
       state.authentication_token = "EMPTY"
-      //state.refresh_token = null
-      //TMP
-      //if (authenticate()) {
-      //  return simpleRequest(method)
-      //}
     }
     if (ex instanceof groovyx.net.http.HttpResponseException && ex.getStatusCode() == 412 && (method in ["auth", "session"])) {
       logInfo "2 Step Challenge"
@@ -1198,15 +1196,6 @@ def responseHandler(response, params) {
       }
       return result
     }
-    /*
-    Potentially no longer needed.
-    else if (params.method == "session") {
-      state.authentication_token = response?.data?.profile.authentication_token
-      logInfo "Authenticated, Token Found."
-      //state.holdRequests = false
-      return state.authentication_token && state.authentication_token != "EMPTY"
-    }
-    */
     else if (params.method == "locations") {
       return response.data.user_locations
     }
@@ -1242,7 +1231,7 @@ def responseHandler(response, params) {
       ])
     }
     else if (params.method == "snapshot-image") {
-      response.properties.each {log.warn it}
+      response.properties.each { log.warn it }
       getChildDevice(params.data.dni).childParse(params.method, [
         response: response.getStatus(),
         action: params.data.action,
@@ -1286,8 +1275,6 @@ def responseHandler(response, params) {
 
 def loggedIn() {
   logDebug "loggedIn()"
-  //logTrace "state.authentication_token ${state.authentication_token}"
-  //return state.authentication_token && state.authentication_token != "EMPTY"
   logTrace "state.access_token ${state.access_token}"
   return state.access_token && state.access_token != "EMPTY"
 }
