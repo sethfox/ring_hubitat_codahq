@@ -18,13 +18,15 @@
  *  2019-11-15: Import URL
  *  2020-01-11: Removed the motion sensor capability because it shouldn't have been there
  *  2020-02-12: Fixed battery % to show correctly in dashboards
+ *  2020-02-29: Added checkin event
+ *              Changed namespace
  *
  */
 
 import groovy.json.JsonSlurper
 
 metadata {
-  definition(name: "Ring Virtual Alarm Smoke & CO Listener", namespace: "codahq-hubitat", author: "Ben Rimmasch",
+  definition(name: "Ring Virtual Alarm Smoke & CO Listener", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
     importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-alarm-smoke-co-listener.groovy") {
     capability "Refresh"
     capability "Sensor"
@@ -36,6 +38,7 @@ metadata {
     attribute "listeningCarbonMonoxide", "string"
     attribute "listeningSmoke", "string"
     attribute "testMode", "string"
+    attribute "lastCheckin", "string"
   }
 
   preferences {
@@ -99,6 +102,9 @@ def setValues(deviceInfo) {
   }
   if (deviceInfo.impulseType) {
     state.impulseType = deviceInfo.impulseType
+    if (deviceInfo.impulseType == "comm.heartbeat") {
+      sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+    }
   }
   if (deviceInfo.lastCommTime) {
     state.signalStrength = deviceInfo.lastCommTime
@@ -115,7 +121,6 @@ def setValues(deviceInfo) {
   if (deviceInfo.hardwareVersion && device.getDataValue("hardwareVersion") != deviceInfo.hardwareVersion) {
     device.updateDataValue("hardwareVersion", deviceInfo.hardwareVersion)
   }
-
 }
 
 def checkChanged(attribute, newStatus) {
@@ -129,3 +134,12 @@ def checkChanged(attribute, newStatus, unit) {
   }
 }
 
+private convertToLocalTimeString(dt) {
+  def timeZoneId = location?.timeZone?.ID
+  if (timeZoneId) {
+    return dt.format("yyyy-MM-dd h:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+  }
+  else {
+    return "$dt"
+  }
+}
