@@ -17,13 +17,15 @@
  *  2019-12-20: Initial
  *  2020-02-12: Fixed battery % to show correctly in dashboards
  *              Made some guesses on how the alarm component of this actually works
+ *  2020-02-29: Added checkin event
+ *              Changed namespace
  *
  */
 
 import groovy.json.JsonSlurper
 
 metadata {
-  definition(name: "Ring Virtual Smoke Alarm", namespace: "codahq-hubitat", author: "Ben Rimmasch",
+  definition(name: "Ring Virtual Smoke Alarm", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
     importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-smoke-alarm.groovy") {
     capability "Refresh"
     capability "Sensor"
@@ -31,6 +33,7 @@ metadata {
     capability "TamperAlert"
     capability "SmokeDetector" //smoke - ENUM ["clear", "tested", "detected"]
 
+    attribute "lastCheckin", "string"
   }
 
   preferences {
@@ -87,6 +90,9 @@ def setValues(deviceInfo) {
   }
   if (deviceInfo.impulseType) {
     state.impulseType = deviceInfo.impulseType
+    if (deviceInfo.impulseType == "comm.heartbeat") {
+      sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+    }
   }
   if (deviceInfo.lastCommTime) {
     state.signalStrength = deviceInfo.lastCommTime
@@ -117,3 +123,12 @@ def checkChanged(attribute, newStatus, unit) {
   }
 }
 
+private convertToLocalTimeString(dt) {
+  def timeZoneId = location?.timeZone?.ID
+  if (timeZoneId) {
+    return dt.format("yyyy-MM-dd h:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+  }
+  else {
+    return "$dt"
+  }
+}
