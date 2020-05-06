@@ -17,18 +17,22 @@
  *  2019-05-06: Initial
  *  2019-11-15: Import URL
  *  2020-02-12: Fixed battery % to show correctly in dashboards
+ *  2020-02-29: Added checkin event
+ *              Changed namespace
  *
  */
 
 import groovy.json.JsonSlurper
 
 metadata {
-  definition(name: "Ring Virtual Lock", namespace: "codahq-hubitat", author: "Ben Rimmasch",
+  definition(name: "Ring Virtual Lock", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
     importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-lock.groovy") {
     capability "Refresh"
     capability "Sensor"
     capability "Lock"
     capability "Battery"
+
+    attribute "lastCheckin", "string"
   }
 
   preferences {
@@ -81,6 +85,9 @@ def setValues(deviceInfo) {
   }
   if (deviceInfo.impulseType) {
     state.impulseType = deviceInfo.impulseType
+    if (deviceInfo.impulseType == "comm.heartbeat") {
+      sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+    }
   }
   if (deviceInfo.lastCommTime) {
     state.signalStrength = deviceInfo.lastCommTime
@@ -108,5 +115,15 @@ def checkChanged(attribute, newStatus, unit) {
   if (device.currentValue(attribute) != newStatus) {
     logInfo "${attribute.capitalize()} for device ${device.label} is ${newStatus}"
     sendEvent(name: attribute, value: newStatus, unit: unit)
+  }
+}
+
+private convertToLocalTimeString(dt) {
+  def timeZoneId = location?.timeZone?.ID
+  if (timeZoneId) {
+    return dt.format("yyyy-MM-dd h:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+  }
+  else {
+    return "$dt"
   }
 }
