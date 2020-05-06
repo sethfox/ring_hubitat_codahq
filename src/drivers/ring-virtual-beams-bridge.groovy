@@ -1,5 +1,5 @@
 /**
- *  Ring Beams Bridge Driver
+ *  Ring Virtual Beams Bridge Driver
  *
  *  Copyright 2019 Ben Rimmasch
  *
@@ -16,6 +16,8 @@
  *  Change Log:
  *  2019-04-26: Initial
  *  2019-11-15: Import URL
+ *  2020-02-29: Added checkin event
+ *              Changed namespace
  *
  */
 
@@ -23,10 +25,12 @@ import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
 
 metadata {
-  definition(name: "Ring Beams Bridge", namespace: "codahq-hubitat", author: "Ben Rimmasch",
+  definition(name: "Ring Virtual Beams Bridge", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
     importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-beams-bridge.groovy") {
     capability "Refresh"
     capability "Sensor"
+
+    attribute "lastCheckin", "string"
 
     command "createDevices"
   }
@@ -70,27 +74,35 @@ def setValues(deviceInfo) {
   if (deviceInfo.impulseType) {
     state.impulseType = deviceInfo.impulseType
   }
+  if (deviceInfo.deviceType == "halo-stats.latency" && deviceInfo.state?.status == "success") {
+    sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+  }
   if (deviceInfo.lastCommTime) {
     state.signalStrength = deviceInfo.lastCommTime
   }
   if (deviceInfo.state?.networks?.wlan0) {
-    state.network = deviceInfo.state?.networks?.wlan0.ssid
-    state.rssi = deviceInfo.state?.networks?.wlan0.rssi
+    if (deviceInfo.state?.networks?.wlan0.ssid) {
+      state.network = deviceInfo.state?.networks?.wlan0.ssid
+    }
+    if (deviceInfo.state?.networks?.wlan0.rssi) {
+      state.rssi = deviceInfo.state?.networks?.wlan0.rssi
+    }
   }
-  //Ring deprecated version info in favor of a single int version
-  /*
-  if (deviceInfo.state?.version?.buildNumber && device.getDataValue("buildNumber") != deviceInfo.state?.version?.buildNumber) {
-    device.updateDataValue("buildNumber", deviceInfo.state?.version?.buildNumber)
+  if (deviceInfo.deviceType == "adapter.ringnet" && deviceInfo.state?.version) {
+    if (deviceInfo.state?.version?.nordicFirmwareVersion && device.getDataValue("nordicFirmwareVersion") != deviceInfo.state?.version?.nordicFirmwareVersion) {
+      device.updateDataValue("nordicFirmwareVersion", deviceInfo.state?.version?.nordicFirmwareVersion)
+    }
+    if (deviceInfo.state?.version?.buildNumber && device.getDataValue("buildNumber") != deviceInfo.state?.version?.buildNumber) {
+      device.updateDataValue("buildNumber", deviceInfo.state?.version?.buildNumber)
+    }
+    if (deviceInfo.state?.version?.softwareVersion && device.getDataValue("softwareVersion") != deviceInfo.state?.version?.softwareVersion) {
+      device.updateDataValue("softwareVersion", deviceInfo.state?.version?.softwareVersion)
+    }
   }
-  if (deviceInfo.state?.version?.nordicFirmwareVersion && device.getDataValue("nordicFirmwareVersion") != deviceInfo.state?.version?.nordicFirmwareVersion) {
-    device.updateDataValue("nordicFirmwareVersion", deviceInfo.state?.version?.nordicFirmwareVersion)
-  }
-  if (deviceInfo.state?.version?.softwareVersion && device.getDataValue("softwareVersion") != deviceInfo.state?.version?.softwareVersion) {
-    device.updateDataValue("softwareVersion", deviceInfo.state?.version?.softwareVersion)
-  }
-  */
-  if (deviceInfo.state?.version && device.getDataValue("version") != deviceInfo.state?.version) {
-    device.updateDataValue("version", deviceInfo.state?.version.toString())
+  else if (deviceInfo.state?.version) {
+    if (device.getDataValue("version") != deviceInfo.state?.version) {
+      device.updateDataValue("version", deviceInfo.state?.version.toString())
+    }
   }
 }
 
@@ -98,5 +110,15 @@ def checkChanged(attribute, newStatus) {
   if (device.currentValue(attribute) != newStatus) {
     logInfo "${attribute.capitalize()} for device ${device.label} is ${newStatus}"
     sendEvent(name: attribute, value: newStatus)
+  }
+}
+
+private convertToLocalTimeString(dt) {
+  def timeZoneId = location?.timeZone?.ID
+  if (timeZoneId) {
+    return dt.format("yyyy-MM-dd h:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+  }
+  else {
+    return "$dt"
   }
 }
