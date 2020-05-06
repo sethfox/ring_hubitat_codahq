@@ -1,5 +1,5 @@
 /**
- *  Ring Alarm Hub Driver
+ *  Ring Virtual Alarm Hub Driver
  *
  *  Copyright 2019 Ben Rimmasch
  *
@@ -19,6 +19,7 @@
  *  2019-12-20: Added description to syncing preference for clarity
  *  2020-01-09: Fixed update to HSM status to only happen when necessary
  *              Added fireAlarm attribute to hold fire alarm status
+ *  2020-02-29: Changed namespace
  *
  */
 
@@ -26,7 +27,7 @@ import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
 
 metadata {
-  definition(name: "Ring Alarm Hub", namespace: "codahq-hubitat", author: "Ben Rimmasch",
+  definition(name: "Ring Virtual Alarm Hub", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
     importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-alarm-hub.groovy") {
     capability "Actuator"
     capability "Audio Volume"
@@ -315,13 +316,31 @@ def setValues(deviceInfo) {
     && device.getDataValue("softwareVersion") != deviceInfo.state?.version?.softwareVersion) {
     device.updateDataValue("softwareVersion", deviceInfo.state?.version?.softwareVersion)
   }
-
+  if (deviceInfo.state?.networks) {
+    def nw = deviceInfo.state?.networks
+    if (nw.ppp0) {
+      sendEvent(name: nw.ppp0.type.capitalize(), value: "${nw.ppp0.name} RSSI ${nw.ppp0.rssi}")
+    }
+    if (nw.wlan0) {
+      sendEvent(name: nw.wlan0.type.capitalize(), value: "${nw.wlan0.ssid} RSSI ${nw.wlan0.rssi}")
+    }
+  }
+  if (deviceInfo.state?.batteryBackup) {
+    sendEvent(name: "batteryBackup", value: deviceInfo.state?.batteryBackup)
+  }
 }
 
 def checkChanged(attribute, newStatus) {
   if (device.currentValue(attribute) != newStatus) {
     logInfo "${attribute.capitalize()} for device ${device.label} is ${newStatus}"
     sendEvent(name: attribute, value: newStatus)
+  }
+}
+
+def checkChanged(attribute, newStatus, unit) {
+  if (device.currentValue(attribute) != newStatus) {
+    logInfo "${attribute.capitalize()} for device ${device.label} is ${newStatus}"
+    sendEvent(name: attribute, value: newStatus, unit: unit)
   }
 }
 
