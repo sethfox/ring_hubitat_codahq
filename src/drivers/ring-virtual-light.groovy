@@ -1,5 +1,5 @@
 /**
- *  Ring Generic Light Device Driver
+ *  Ring Virtual Light Device Driver
  *
  *  Copyright 2019 Ben Rimmasch
  *
@@ -20,14 +20,15 @@
  *              Fixed polling for light status
  *  2019-12-23: Added battery support
  *  2020-02-11: Added second battery support
+ *  2020-02-29: Changed namespace
  *
  */
 
 import groovy.json.JsonSlurper
 
 metadata {
-  definition(name: "Ring Generic Light", namespace: "codahq-hubitat", author: "Ben Rimmasch",
-    importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-generic-light.groovy") {
+  definition(name: "Ring Virtual Light", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
+    importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-light.groovy") {
     capability "Actuator"
     capability "Switch"
     capability "Sensor"
@@ -36,10 +37,11 @@ metadata {
     capability "MotionSensor"
     capability "Battery"
 
+    attribute "battery2", "number"
+    attribute "lastActivity", "string"
+
     command "flash"
     command "getDings"
-
-    attribute "battery2", "number"
   }
 
   // simulator metadata
@@ -170,6 +172,8 @@ def childParse(type, params) {
   logTrace "type ${type}"
   logTrace "params ${params}"
 
+  sendEvent(name: "lastActivity", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+
   if (type == "refresh") {
     logTrace "refresh"
     handleRefresh(params.msg)
@@ -260,5 +264,15 @@ def checkChanged(attribute, newStatus, unit) {
   if (device.currentValue(attribute) != newStatus) {
     logInfo "${attribute.capitalize()} for device ${device.label} is ${newStatus}"
     sendEvent(name: attribute, value: newStatus, unit: unit)
+  }
+}
+
+private convertToLocalTimeString(dt) {
+  def timeZoneId = location?.timeZone?.ID
+  if (timeZoneId) {
+    return dt.format("yyyy-MM-dd h:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+  }
+  else {
+    return "$dt"
   }
 }
