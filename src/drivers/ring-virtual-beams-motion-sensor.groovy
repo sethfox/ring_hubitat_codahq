@@ -18,19 +18,23 @@
  *  2019-11-15: Import URL
  *  2019-11-24: Fix for motion events not working... the entire point of this device.
  *  2020-02-12: Fixed battery % to show correctly in dashboards
+ *  2020-02-29: Added checkin event
+ *              Changed namespace
  *
  */
 
 import groovy.json.JsonSlurper
 
 metadata {
-  definition(name: "Ring Virtual Beams Motion Sensor", namespace: "codahq-hubitat", author: "Ben Rimmasch",
+  definition(name: "Ring Virtual Beams Motion Sensor", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
     importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-beams-motion-sensor.groovy") {
     capability "Refresh"
     capability "Sensor"
     capability "Motion Sensor"
     capability "Battery"
     capability "TamperAlert"
+
+    attribute "lastCheckin", "string"
   }
 
   preferences {
@@ -72,8 +76,9 @@ def setValues(deviceInfo) {
     def tamper = deviceInfo.tamperStatus == "tamper" ? "detected" : "clear"
     checkChanged("tamper", tamper)
   }
-  if (deviceInfo.lastUpdate) {
+  if (deviceInfo.lastUpdate != state.lastUpdate) {
     state.lastUpdate = deviceInfo.lastUpdate
+    sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
   }
   if (deviceInfo.impulseType) {
     state.impulseType = deviceInfo.impulseType
@@ -90,10 +95,9 @@ def setValues(deviceInfo) {
   if (deviceInfo.firmware && device.getDataValue("firmware") != deviceInfo.firmware) {
     device.updateDataValue("firmware", deviceInfo.firmware)
   }
-  if (deviceInfo.hardwareVersion && device.getDataValue("hardwareVersion") != deviceInfo.hardwareVersion) {
+  if (deviceInfo.hardwareVersion && deviceInfo.hardwareVersion != "null" && device.getDataValue("hardwareVersion") != deviceInfo.hardwareVersion) {
     device.updateDataValue("hardwareVersion", deviceInfo.hardwareVersion)
   }
-
 }
 
 def checkChanged(attribute, newStatus) {
@@ -107,3 +111,12 @@ def checkChanged(attribute, newStatus, unit) {
   }
 }
 
+private convertToLocalTimeString(dt) {
+  def timeZoneId = location?.timeZone?.ID
+  if (timeZoneId) {
+    return dt.format("yyyy-MM-dd h:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+  }
+  else {
+    return "$dt"
+  }
+}
