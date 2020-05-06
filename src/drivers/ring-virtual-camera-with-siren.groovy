@@ -1,5 +1,5 @@
 /**
- *  Ring Camera with Siren Device Driver
+ *  Ring Virtual Camera with Siren Device Driver
  *
  *  Copyright 2019 Ben Rimmasch
  *
@@ -18,14 +18,15 @@
  *  2019-11-13: Added battery level support
  *  2019-11-15: Import URL
  *  2019-12-20: Started tinkering with getting thumbnails
+ *  2020-02-29: Changed namespace
  *
  */
 
 import groovy.json.JsonSlurper
 
 metadata {
-  definition(name: "Ring Generic Camera with Siren", namespace: "codahq-hubitat", author: "Ben Rimmasch",
-    importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-generic-camera-with-siren.groovy") {
+  definition(name: "Ring Virtual Camera with Siren", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
+    importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-camera-with-siren.groovy") {
     capability "Actuator"
     capability "Sensor"
     capability "Refresh"
@@ -35,22 +36,9 @@ metadata {
     capability "Battery"
 
     command "getDings"
-    //command "test"
+    command "test"
   }
 
-  // simulator metadata
-  simulator {
-  }
-
-  // UI tile definitions
-  tiles {
-    standardTile("button", "device.switch", width: 2, height: 2, canChangeIcon: true) {
-      state "off", label: 'Off', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff", nextState: "on"
-      state "on", label: 'On', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#00A0DC", nextState: "off"
-    }
-    main "button"
-    details "button"
-  }
   preferences {
     input name: "descriptionTextEnable", type: "bool", title: "Enable descriptionText logging", defaultValue: false
     input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: false
@@ -93,7 +81,8 @@ def getDings() {
 }
 
 def test() {
-  parent.simpleRequest("history", [dni: device.deviceNetworkId])
+  //parent.simpleRequest("history", [dni: device.deviceNetworkId])
+  parent.simpleRequest("snapshot-image", [dni: device.deviceNetworkId])
 }
 
 def off(boolean modifyAlarm = true) {
@@ -130,6 +119,9 @@ def childParse(type, params) {
   else if (type == "dings") {
     logTrace "dings"
     handleDings(params.type, params.msg)
+  }
+  else if (type == "snapshot-image") {
+    state.snapshot = params.jpg
   }
   else {
     log.error "Unhandled type ${type}"
