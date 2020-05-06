@@ -1,5 +1,5 @@
 /**
- *  Ring Retrofit Alarm Kit
+ *  Ring Virtual Retrofit Alarm Kit
  *
  *  Copyright 2019 Ben Rimmasch
  *
@@ -22,13 +22,13 @@ import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
 
 metadata {
-  definition(name: "Ring Retrofit Alarm Kit", namespace: "codahq-hubitat", author: "Ben Rimmasch",
+  definition(name: "Ring Virtual Retrofit Alarm Kit", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
     importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-retrofit-alarm-kit.groovy") {
     capability "Refresh"
     capability "Sensor"
     capability "Battery"
     capability "TamperAlert"
-    
+
     attribute "lastCheckin", "string"
   }
 
@@ -59,7 +59,7 @@ def refresh() {
 def setValues(deviceInfo) {
   logDebug "updateDevice(deviceInfo)"
   logTrace "deviceInfo: ${JsonOutput.prettyPrint(JsonOutput.toJson(deviceInfo))}"
-  
+
   if (deviceInfo.componentDevices) {
     state.componentDevices = deviceInfo.componentDevices
   }
@@ -109,7 +109,7 @@ def checkChanged(attribute, newStatus, unit) {
 
 private convertToLocalTimeString(dt) {
   def timeZoneId = location?.timeZone?.ID
-	if (timeZoneId) {
+  if (timeZoneId) {
     return dt.format("yyyy-MM-dd h:mm:ss a", TimeZone.getTimeZone(timeZoneId))
   }
   else {
