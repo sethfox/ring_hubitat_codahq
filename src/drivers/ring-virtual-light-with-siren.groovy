@@ -1,5 +1,5 @@
 /**
- *  Ring Generic Light with Siren Device Driver
+ *  Ring Virtual Light with Siren Device Driver
  *
  *  Copyright 2019 Ben Rimmasch
  *
@@ -16,14 +16,15 @@
  *  Change Log:
  *  2019-03-02: Initial
  *  2019-11-15: Import URL
+ *  2020-02-29: Changed namespace
  *
  */
 
 import groovy.json.JsonSlurper
 
 metadata {
-  definition(name: "Ring Generic Light with Siren", namespace: "codahq-hubitat", author: "Ben Rimmasch",
-    importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-generic-light-with-siren.groovy") {
+  definition(name: "Ring Virtual Light with Siren", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
+    importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-light-with-siren.groovy") {
     capability "Actuator"
     capability "Switch"
     capability "Sensor"
@@ -32,23 +33,12 @@ metadata {
     capability "Alarm"
     capability "MotionSensor"
 
+    attribute "lastActivity", "string"
+
     command "alarmOff"
     command "getDings"
   }
 
-  // simulator metadata
-  simulator {
-  }
-
-  // UI tile definitions
-  tiles {
-    standardTile("button", "device.switch", width: 2, height: 2, canChangeIcon: true) {
-      state "off", label: 'Off', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff", nextState: "on"
-      state "on", label: 'On', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#00A0DC", nextState: "off"
-    }
-    main "button"
-    details "button"
-  }
   preferences {
     input name: "lightPolling", type: "bool", title: "Enable polling for light status on this device", defaultValue: false
     input name: "lightInterval", type: "number", range: 10..600, title: "Number of seconds in between light polls", defaultValue: 15
@@ -184,6 +174,8 @@ def childParse(type, params) {
   logTrace "type ${type}"
   logTrace "params ${params}"
 
+  sendEvent(name: "lastActivity", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+
   if (type == "refresh") {
     logTrace "refresh"
     handleRefresh(params.msg)
@@ -279,5 +271,15 @@ def checkChanged(attribute, newStatus) {
   if (device.currentValue(attribute) != newStatus) {
     logInfo "${attribute.capitalize()} for device ${device.label} is ${newStatus}"
     sendEvent(name: attribute, value: newStatus)
+  }
+}
+
+private convertToLocalTimeString(dt) {
+  def timeZoneId = location?.timeZone?.ID
+  if (timeZoneId) {
+    return dt.format("yyyy-MM-dd h:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+  }
+  else {
+    return "$dt"
   }
 }
