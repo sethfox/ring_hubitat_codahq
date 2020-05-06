@@ -22,13 +22,15 @@
  *                schedule off the motion instead.  Maybe at some later date I can change it to turn off when a message is
  *                received.)
  *  2020-02-12: Fixed battery % to show correctly in dashboards
+ *  2020-02-29: Added checkin event
+ *              Changed namespace
  *
  */
 
 import groovy.json.JsonSlurper
 
 metadata {
-  definition(name: "Ring Virtual Keypad", namespace: "codahq-hubitat", author: "Ben Rimmasch",
+  definition(name: "Ring Virtual Keypad", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
     importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-keypad.groovy") {
     capability "Sensor"
     capability "Motion Sensor"
@@ -37,6 +39,7 @@ metadata {
 
     attribute "mode", "string"
     attribute "brightness", "number"
+    attribute "lastCheckin", "string"
 
     command "setBrightness", [[name: "Set LED Brightness*", type: "NUMBER", range: "0..100", description: "Choose a value between 0 and 100"]]
   }
@@ -175,6 +178,9 @@ def setValues(deviceInfo) {
   }
   if (deviceInfo.impulseType) {
     state.impulseType = deviceInfo.impulseType
+    if (deviceInfo.impulseType == "comm.heartbeat") {
+      sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+    }
   }
   if (deviceInfo.lastCommTime) {
     state.signalStrength = deviceInfo.lastCommTime
@@ -202,6 +208,16 @@ def checkChanged(attribute, newStatus, unit) {
   if (device.currentValue(attribute) != newStatus) {
     logInfo "${attribute.capitalize()} for device ${device.label} is ${newStatus}"
     sendEvent(name: attribute, value: newStatus, unit: unit)
+  }
+}
+
+private convertToLocalTimeString(dt) {
+  def timeZoneId = location?.timeZone?.ID
+  if (timeZoneId) {
+    return dt.format("yyyy-MM-dd h:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+  }
+  else {
+    return "$dt"
   }
 }
 
