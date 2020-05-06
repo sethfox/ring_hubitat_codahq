@@ -1,5 +1,5 @@
 /**
- *  Ring Generic Chime Device Driver
+ *  Ring Virtual Chime Device Driver
  *
  *  Copyright 2019 Ben Rimmasch
  *
@@ -17,14 +17,15 @@
  *  2019-03-02: Initial
  *  2019-11-15: Import URL
  *  2019-12-20: API changes to accommodate Ring upstream API changes
+ *  2020-02-29: Changed namespace
  *
  */
 
 import groovy.json.JsonSlurper
 
 metadata {
-  definition(name: "Ring Generic Chime", namespace: "codahq-hubitat", author: "Ben Rimmasch",
-    importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-generic-chime.groovy") {
+  definition(name: "Ring Virtual Chime", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
+    importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-chime.groovy") {
     capability "Actuator"
     capability "Tone"
     capability "AudioNotification"
