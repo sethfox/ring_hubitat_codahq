@@ -17,6 +17,7 @@
  *  2019-04-26: Initial
  *  2019-11-15: Import URL
  *  2020-02-12: Fixed odd behavior for when a group is added that has a member that isn't created
+ *  2020-02-29: Changed namespace
  *
  */
 
@@ -24,7 +25,7 @@ import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
 
 metadata {
-  definition(name: "Ring Virtual Beams Group", namespace: "codahq-hubitat", author: "Ben Rimmasch",
+  definition(name: "Ring Virtual Beams Group", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
     importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-beams-group.groovy") {
     capability "Refresh"
     capability "Sensor"
