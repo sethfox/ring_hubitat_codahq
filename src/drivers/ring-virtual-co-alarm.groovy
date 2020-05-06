@@ -16,20 +16,20 @@
  *  Change Log:
  *  2019-12-20: Initial
  *  2020-02-12: Fixed battery % to show correctly in dashboards
+ *  2020-02-29: Changed namespace
  *
  */
 
 import groovy.json.JsonSlurper
 
 metadata {
-  definition(name: "Ring Virtual CO Alarm", namespace: "codahq-hubitat", author: "Ben Rimmasch",
+  definition(name: "Ring Virtual CO Alarm", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
     importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-co-alarm.groovy") {
     capability "Refresh"
     capability "Sensor"
     capability "Battery"
     capability "TamperAlert"
     capability "CarbonMonoxideDetector" //carbonMonoxide - ENUM ["detected", "tested", "clear"]
-
   }
 
   preferences {
@@ -107,4 +107,3 @@ def checkChanged(attribute, newStatus, unit) {
     sendEvent(name: attribute, value: newStatus, unit: unit)
   }
 }
-
