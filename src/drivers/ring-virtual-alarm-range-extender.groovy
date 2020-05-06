@@ -19,6 +19,8 @@
  *  2020-02-12: Fixed battery % to show correctly in dashboards
  *  2020-02-29: Added checkin event
  *              Changed namespace
+ *  2020-05-06: Added "PowerSource" capability
+ *              Changed acStatus values to match closer to Ring's documentation labels for those alerts
  *
  */
 
@@ -30,6 +32,7 @@ metadata {
     capability "Refresh"
     capability "Sensor"
     capability "Battery"
+    capability "PowerSource"
 
     attribute "acStatus", "string"
     attribute "batteryStatus", "string"
@@ -65,7 +68,10 @@ def setValues(deviceInfo) {
   logTrace "deviceInfo: ${deviceInfo}"
 
   if (deviceInfo.acStatus && deviceInfo.acStatus != null) {
-    checkChanged("acStatus", deviceInfo.acStatus)
+    def acStatus = deviceInfo.acStatus == "ok" ? "connected" : (deviceInfo.acStatus == "error" ? "disconnected" : "brownout")
+    checkChanged("acStatus", acStatus)
+    def powerSource = deviceInfo.acStatus == "ok" ? "mains" : (deviceInfo.acStatus == "error" ? "battery" : "unknown")
+    checkChanged("powerSource", powerSource)
   }
   //"batteryStatus": "full",
   //impulseType == battery.changed-out-of-band
