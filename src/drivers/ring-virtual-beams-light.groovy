@@ -21,6 +21,8 @@
  *              Added the ability to turn on with a duration (60 seconds is default)
  *              Fixed battery % to show correctly in dashboards
  *              Fixed an issue where hardware version was lost
+ *  2020-02-29: Added checkin event
+ *              Changed namespace
  *
  *
  */
@@ -29,7 +31,7 @@ import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
 
 metadata {
-  definition(name: "Ring Virtual Beams Light", namespace: "codahq-hubitat", author: "Ben Rimmasch",
+  definition(name: "Ring Virtual Beams Light", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
     importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-beams-light.groovy") {
     capability "Refresh"
     capability "Sensor"
@@ -39,6 +41,7 @@ metadata {
     capability "Switch"
 
     attribute "brightness", "number"
+    attribute "lastCheckin", "string"
 
     command "on", [[name: "Duration", type: "NUMBER", range: "0..28800", description: "Choose a value between 0 and 28800 seconds"]]
     command "setBrightness", [[name: "Set LED Brightness*", type: "NUMBER", range: "0..100", description: "Choose a value between 0 and 100"]]
@@ -113,8 +116,9 @@ def setValues(deviceInfo) {
     def tamper = deviceInfo.tamperStatus == "tamper" ? "detected" : "clear"
     checkChanged("tamper", tamper)
   }
-  if (deviceInfo.lastUpdate) {
+  if (deviceInfo.lastUpdate != state.lastUpdate) {
     state.lastUpdate = deviceInfo.lastUpdate
+    sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
   }
   if (deviceInfo.impulseType) {
     state.impulseType = deviceInfo.impulseType
@@ -160,3 +164,12 @@ def checkChanged(attribute, newStatus, unit) {
   }
 }
 
+private convertToLocalTimeString(dt) {
+  def timeZoneId = location?.timeZone?.ID
+  if (timeZoneId) {
+    return dt.format("yyyy-MM-dd h:mm:ss a", TimeZone.getTimeZone(timeZoneId))
+  }
+  else {
+    return "$dt"
+  }
+}
