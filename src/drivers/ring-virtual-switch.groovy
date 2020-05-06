@@ -16,13 +16,14 @@
  *  Change Log:
  *  2019-11-12: Initial
  *  2019-11-15: Import URL
+ *  2020-02-29: Changed namespace
  *
  */
 
 import groovy.json.JsonSlurper
 
 metadata {
-  definition(name: "Ring Virtual Switch", namespace: "codahq-hubitat", author: "Ben Rimmasch",
+  definition(name: "Ring Virtual Switch", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
     importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-switch.groovy") {
     capability "Refresh"
     capability "Sensor"
