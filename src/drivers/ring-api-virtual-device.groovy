@@ -21,6 +21,9 @@
  *              Support for the Ring Flood & Freeze Sensor
  *              Updated to the documented location of the websocket client
  *              Added an informational log when the websocket timeout it received
+ *  2020-02-29: Support for Retrofit Alarm Kit
+ *              Supressed more websocket nonsense logging errors
+ *              Changed namespace
  *
  */
 
@@ -29,7 +32,7 @@ import groovy.json.JsonOutput
 import hubitat.helper.InterfaceUtils
 
 metadata {
-  definition(name: "Ring API Virtual Device", namespace: "codahq-hubitat", author: "Ben Rimmasch",
+  definition(name: "Ring API Virtual Device", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
     description: "This device holds the websocket connection that controls the alarm hub and/or the lighting bridge",
     importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-api-virtual-device.groovy") {
     capability "Actuator"
@@ -665,7 +668,7 @@ def createDevice(deviceInfo) {
       //  data << ["hub-zid": hubNode.general.v2.zid]
       //}
 
-      d = addChildDevice("codahq-hubitat", DEVICE_TYPES[deviceInfo.deviceType].name, getFormattedDNI(deviceInfo.zid), data)
+      d = addChildDevice("ring-hubitat-codahq", DEVICE_TYPES[deviceInfo.deviceType].name, getFormattedDNI(deviceInfo.zid), data)
       d.label = deviceInfo.name ?: DEVICE_TYPES[deviceInfo.deviceType].name
       log.warn "Succesfully added ${deviceInfo.deviceType} with dni: ${getFormattedDNI(deviceInfo.zid)}"
     }
@@ -733,6 +736,7 @@ private getDEVICE_TYPES() {
     //physical alarm devices
     "sensor.contact": [name: "Ring Virtual Contact Sensor", hidden: false],
     "sensor.tilt": [name: "Ring Virtual Contact Sensor", hidden: false],
+    "sensor.zone": [name: "Ring Virtual Contact Sensor", hidden: false],
     "sensor.motion": [name: "Ring Virtual Motion Sensor", hidden: false],
     "sensor.flood-freeze": [name: "Ring Virtual Alarm Flood & Freeze Sensor", hidden: false],
     "listener.smoke-co": [name: "Ring Virtual Alarm Smoke & CO Listener", hidden: false],
@@ -741,9 +745,10 @@ private getDEVICE_TYPES() {
     "range-extender.zwave": [name: "Ring Virtual Alarm Range Extender", hidden: false],
     "lock": [name: "Ring Virtual Lock", hidden: false],
     "security-keypad": [name: "Ring Virtual Keypad", hidden: false],
-    "base_station_v1": [name: "Ring Alarm Hub", hidden: false],
+    "base_station_v1": [name: "Ring Virtual Alarm Hub", hidden: false],
     "siren": [name: "Ring Virtual Siren", hidden: false],
     "switch": [name: "Ring Virtual Switch", hidden: false],
+    "bridge.flatline": [name: "Ring Virtual Retrofit Alarm Kit", hidden: false],
     //virtual alarm devices
     "adapter.zwave": [name: "Ring Z-Wave Adapter", hidden: true],
     "adapter.zigbee": [name: "Ring Zigbee Adapter", hidden: true],
@@ -755,7 +760,7 @@ private getDEVICE_TYPES() {
     "switch.multilevel.beams": [name: "Ring Virtual Beams Light", hidden: false],
     "motion-sensor.beams": [name: "Ring Virtual Beams Motion Sensor", hidden: false],
     "group.light-group.beams": [name: "Ring Virtual Beams Group", hidden: false],
-    "beams_bridge_v1": [name: "Ring Beams Bridge", hidden: false],
+    "beams_bridge_v1": [name: "Ring Virtual Beams Bridge", hidden: false],
     //virtual beams devices
     "adapter.ringnet": [name: "Ring Beams Ringnet Adapter", hidden: true]
   ]
@@ -784,7 +789,8 @@ def boolean isParentRequest(type) {
 
 private getIGNORED_MSG_TYPES() {
   return [
-    "SessionInfo"
+    "SessionInfo",
+    "SubscriptionTopicsInfo"
   ]
 }
 
