@@ -1,5 +1,5 @@
 /**
- *  Ring Camera Device Driver
+ *  Ring Virtual Camera Device Driver
  *
  *  Copyright 2019 Ben Rimmasch
  *
@@ -18,14 +18,15 @@
  *  2019-11-13: Added battery level support
  *  2019-11-15: Import URL
  *  2019-11-18: Differentiated between ring and motion events
+ *  2020-02-29: Changed namespace
  *
  */
 
 import groovy.json.JsonSlurper
 
 metadata {
-  definition(name: "Ring Generic Camera", namespace: "codahq-hubitat", author: "Ben Rimmasch",
-    importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-generic-camera.groovy") {
+  definition(name: "Ring Virtual Camera", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
+    importUrl: "https://raw.githubusercontent.com/codahq/ring_hubitat_codahq/master/src/drivers/ring-virtual-camera.groovy") {
     capability "Actuator"
     capability "Sensor"
     capability "Refresh"
@@ -37,19 +38,6 @@ metadata {
     command "getDings"
   }
 
-  // simulator metadata
-  simulator {
-  }
-
-  // UI tile definitions
-  tiles {
-    standardTile("button", "device.switch", width: 2, height: 2, canChangeIcon: true) {
-      state "off", label: 'Off', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff", nextState: "on"
-      state "on", label: 'On', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#00A0DC", nextState: "off"
-    }
-    main "button"
-    details "button"
-  }
   preferences {
     input name: "descriptionTextEnable", type: "bool", title: "Enable descriptionText logging", defaultValue: false
     input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: false
