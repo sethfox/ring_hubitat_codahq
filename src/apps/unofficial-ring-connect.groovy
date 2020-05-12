@@ -36,6 +36,12 @@
  *  2020-02-29: Chime Pro v2 support
  *              Removed session functionality since it's no longer needed
  *              Changed namespace
+ *  2020-05-11: Made 2FA true and read-only
+ *              Support for non-alarm modes (Ring Modes)
+ *              Support to auto-create hub/bridge devices
+ *              Changes to make dual app, multi-location available (but not implemented yet)
+ *              IFTTT page enhancements
+ *              Create device enhancements
  *
  *
  */
@@ -79,10 +85,15 @@ preferences {
 def login() {
   dynamicPage(name: "login", title: "Log into Your Ring Account", nextPage: twofactor ? "secondStep" : "locations", uninstall: true) {
     section("Ring Account Information") {
+      paragraph '<script type="application/javascript">\n' +
+        'var checkbox = $("#settings\\\\[twofactor\\\\]");\n' +
+        'checkbox.prop("checked", true);\n' +
+        'checkbox.click(function(){return false;});\n' +
+        '</script>'
       preferences {
         input "username", "email", title: "Ring Username", description: "Email used to login to Ring.com", displayDuringSetup: true, required: true
         input "password", "password", title: "Ring Password", description: "Password you login to Ring.com", displayDuringSetup: true, required: true
-        input name: "twofactor", type: "bool", title: "2FA Enabled", description: "Toggle on if 2FA is enabled", displayDuringSetup: true, defaultValue: false, submitOnChange: true
+        input name: "twofactor", type: "bool", title: "2FA Enabled", description: "Toggle on if 2FA is enabled", displayDuringSetup: true, defaultValue: true, submitOnChange: true
       }
     }
   }
@@ -134,20 +145,19 @@ def mainPage() {
 
   //getNotifications()
 
-  def locations = []
-  state.locationOptions.each { location ->
-    if (selectedLocations.contains(location.key) || selectedLocations.equals(location.key)) {
-      locations << location.value
-    }
-  }
+  def location = getSelectedLocation()
+  logTrace "location: $location"
 
   dynamicPage(name: "mainPage", title: "Manage Your Ring Devices", nextPage: null, uninstall: true, install: true) {
     section("Ring Account Information    (<b>${loggedIn() ? 'Successfully Logged In!' : 'Not Logged In. Please Configure!'}</b>)") {
       href "login", title: "Log into Your Ring Account", description: ""
     }
 
-    if (locations) {
-      section("Configure Devices For Location:    <b>${locations.join(", ")}</b>") {
+    if (location) {
+      if (!getAPIDevice(location)) {
+
+      }
+      section("Configure Devices For Location:    <b>${location.name}</b>") {
         href "deviceDiscovery", title: "Discover Devices", description: ""
       }
     }
@@ -186,6 +196,16 @@ def notifications() {
 
 def ifttt() {
 
+  def oauthEnabled = true
+  try {
+    if (!state.accessToken) {
+      createAccessToken()
+    }
+  }
+  catch (ex) {
+    oauthEnabled = false
+  }
+
   setupDingables()
 
   def ringables = state.dingables.findAll {
@@ -203,10 +223,13 @@ def ifttt() {
   def imgStyle = "max-width: 100%; max-height: 100vh; margin: auto;"
   def screenshotDiv = "<div style=\"${divStyle}\" ><img style=\"${imgStyle}\" src=\"${iftttScreenshotData}\" alt=\"Screenshot\" /></div>"
 
-  dynamicPage(name: "ifttt", title: "Information about using IFTTT to receive motion and ring events:", uninstall: false) {
-    section('<b style="font-size: 22px;">IFTTT</b>') {
-      paragraph("IFTTT is a service that provides interoperability between many cloud services.  Ring has implemented this service for ring and motion events.  Another service in IFTTT enables web service calls (Webhooks).  The overall control flow will start with a motion event or ring event at your Ring device.  The device will notify the Ring cloud of the event.  The Ring cloud will notify the IFTTT cloud of the event.  The IFTTT cloud will make a web service call to the Hubitat cloud.  The Hubitat cloud will push that call to the hub locally.  The app will process it and send it to the correct device.")
-      paragraph("For all of this to function correctly a few things must be setup.  This app (the Hubitat \"Unofficial Ring Connect\") must be configured for OAuth.  This is so to allow authenticatd, wanted, inbound web service calls that can be routed to your hub.")
+  dynamicPage(name: "ifttt", title: '<b style="font-size: 25px;">Using IFTTT To Receive Motion and Ring Events</b>', uninstall: false) {
+    section('<b style="font-size: 22px;">About IFTTT</b>') {
+      paragraph("IFTTT is a service that provides interoperability between many cloud services.  Ring has implemented IFTTT triggers for ring and motion events.  Triggers allow actions to run.  One of the actions that IFTTT supports are web service calls (Webhooks).  The overall control flow will start with a motion event or ring event at your Ring device.  The device will notify the Ring cloud of the event.  The Ring cloud will notify the IFTTT cloud of the event.  The IFTTT cloud will make a web service call to the Hubitat cloud.  The Hubitat cloud will push that call to the hub locally.  The app will process it and send it to the correct device.")
+      paragraph("For the above to function correctly a few things must be setup.  This app (the Hubitat \"Unofficial Ring Connect\") must be configured for OAuth.  This is so to allow authenticatd, wanted, inbound web service calls that can be routed to your hub.")
+      if (!oauthEnabled) {
+        paragraph('<b style="color: red;">OATH is not currently enabled under the "OAuth" button in the app code editor for this app.  This is required if IFTTT will be used to receive motion and ring events.</b>')
+      }
       paragraph("An IFTTT applet must be configured for each event type for each device.  Here are the Hubitat DNI (device network IDs) of the devices that are probably supported in IFTTT:")
       paragraph(state.dingables.collect { getFormattedDNI(it) }.join("\n"))
     }
@@ -214,9 +237,10 @@ def ifttt() {
       paragraph(
         "- OAuth enabled on this app.  You can do this from the \"Apps Code\" section of the Hubitat UI\n" +
           "- An IFTTT account\n" +
-          "- The Ring service authorized to your IFTTT account\n" +
-          "- A device from Ring that supports the motion and/or ring events shared through the Ring services authorization\n" +
-          "- The Webhooks service authorized to your IFTTT account. (This appears to be done already for new accounts.)\n"
+          "- The Ring service authorized to your IFTTT account (<a href=\"https://ifttt.com/ring\" target=\"_blank\">https://ifttt.com/ring</a>)\n" +
+          "- A Ring device that supports motion and/or ring events in IFTTT\n" +
+          "- The above device authorized to IFTTT through the Ring IFTTT service\n" +
+          "- The ability to use the Webhooks actions on your IFTTT account (This appears to be configured by default for new IFTTT accounts.)\n"
       )
     }
     section('<b style="font-size: 22px;">Steps to create IFTTT Applets</b>') {
@@ -350,7 +374,7 @@ def configurePDevice(params) {
       input "${state.currentDeviceId}_label", "text", title: "Device Name", description: "", required: false
       href "changeName", title: "Change Device Name", description: "Edit the name above and click here to change it"
     }
-    if (state.currentDeviceId == getFormattedDNI(RING_API_DNI)) {
+    if (state.currentDeviceId.startsWith(RING_API_DNI)) {
       section {
         paragraph("This is the virtual device that holds the WebSockets connection for your Ring hubs/bridges. You don't need to "
           + "know what this means but I wanted to tell you so I can justify why it had to exist and why you have to create "
@@ -364,8 +388,10 @@ def configurePDevice(params) {
           + "devices is through the web socket so it will only be done through the API device which holds the API device.")
       }
     }
-    section {
-      href "deletePDevice", title: "Delete $state.currentDisplayName", description: ""
+    else {
+      section {
+        href "deletePDevice", title: "Delete $state.currentDisplayName", description: ""
+      }
     }
   }
 }
@@ -424,6 +450,7 @@ def deviceDiscovery(params = [:]) {
     logDebug "Cleaning old device memory"
     state.devices = [:]
     app.updateSetting("selectedDevice", "")
+    getAPIDevice().resetState("alarmCapable")
   }
 
   discoverDevices()
@@ -463,6 +490,8 @@ private discoverDevices() {
   def supportedIds = getDeviceIds()
   logTrace "supportedIds ${supportedIds}"
   state.devices = supportedIds
+  def alarmCapable = state.devices.find { it.kind == "base_station_v1" }.size() > 0
+  getAPIDevice().setState("alarmCapable", alarmCapable, "bool-set")
 }
 
 def configured() {
@@ -495,7 +524,7 @@ def initialize() {
     }
   }
   catch (ex) {
-    log.warn "Probs need to enable OATH in the app's code, dood/ette.  This is required if IFTTT will be used to receive motion and ring events."
+    log.warn "OATH is not enabled under the \"OAuth\" button in the app code editor.  This is required if IFTTT will be used to receive motion and ring events."
   }
   logDebug "Access token: ${state.accessToken}"
   logDebug "Full API server URL: ${getFullApiServerUrl()}"
@@ -572,32 +601,38 @@ def getDevices() {
 def addDevices() {
   logDebug "addDevices()"
 
-  def devices = getDevices()
+  //def devices = getDevices()
   logTrace "devices ${devices}"
 
+  def apiDevice = getAPIDevice()
+  apiDevice.resetState("createableHubs")
   def sectionText = ""
+  def hubAdded = false
+  selectedDevices.each { id ->
 
-  selectedDevices.each {
-    id ->
+    logTrace "Selected id ${id}"
+    def selectedDevice = devices.find { it.id.toString() == id.toString() }
+    logTrace "Selected device ${selectedDevice}"
 
-      logTrace "Selected id ${id}"
-
-      def selectedDevice = devices.find { it.id.toString() == id.toString() }
-
-      logTrace "Selected device ${selectedDevice}"
-
-      def d
-      if (selectedDevice) {
-        d = getChildDevices()?.find {
-          it.deviceNetworkId == getFormattedDNI(selectedDevice.id)
-        }
+    def d
+    if (selectedDevice) {
+      d = getChildDevices()?.find {
+        it.deviceNetworkId == getFormattedDNI(selectedDevice.id)
       }
+    }
 
-      if (!d) {
-        logDebug selectedDevice
-        log.warn "Creating a ${DEVICE_TYPES[selectedDevice.kind].name} with dni: ${getFormattedDNI(selectedDevice.id)}"
-
-        try {
+    if (!d) {
+      logDebug selectedDevice
+      try {
+        if (isHub(selectedDevice.kind)) {
+          apiDevice.setState("createableHubs", selectedDevice.kind, "array-add")
+          if (!apiDevice.isTypePresent(selectedDevice.kind)) {
+            hubAdded = true
+            sectionText += "Requesting API device to create ${selectedDevice?.name} \r\n"
+          }
+        }
+        else {
+          log.warn "Creating a ${DEVICE_TYPES[selectedDevice.kind].name} with dni: ${getFormattedDNI(selectedDevice.id)}"
           def newDevice = addChildDevice("ring-hubitat-codahq", DEVICE_TYPES[selectedDevice.kind].driver, getFormattedDNI(selectedDevice.id), selectedDevice?.hub, [
             "label": selectedDevice.id == RING_API_DNI ? DEVICE_TYPES[selectedDevice.kind].driver : (selectedDevice?.name ?: DEVICE_TYPES[selectedDevice.kind].name),
             "data": [
@@ -606,29 +641,37 @@ def addDevices() {
               "kind_name": DEVICE_TYPES[selectedDevice.kind].name
             ]
           ])
-          if (selectedDevice.id == RING_API_DNI) {
-            //init the websocket connection and set seq to 0
-            newDevice.initialize()
-          }
           newDevice.refresh()
-
           sectionText = sectionText + "Succesfully added ${DEVICE_TYPES[selectedDevice.kind].name} with DNI ${getFormattedDNI(selectedDevice.id)} \r\n"
         }
-        catch (e) {
+      }
+      catch (e) {
+        if (e.toString().replace(DEVICE_TYPES[selectedDevice.kind].driver, "") ==
+          "com.hubitat.app.exception.UnknownDeviceTypeException: Device type '' in namespace 'ring-hubitat-codahq' not found") {
+          sectionText += '<b style="color: red;">The "' + DEVICE_TYPES[selectedDevice.kind].driver + '" driver for device "' + DEVICE_TYPES[selectedDevice.kind].name + '" was not found and needs to be installed.</b>\r\n'
+        }
+        else {
           sectionText = sectionText + "An error occured ${e} \r\n"
         }
       }
-      else {
-        d.updateDataValue("kind", selectedDevice.kind)
-        d.updateDataValue("kind_name", DEVICE_TYPES[selectedDevice.kind].name)
-      }
+    }
+    else {
+      d.updateDataValue("kind", selectedDevice.kind)
+      d.updateDataValue("kind_name", DEVICE_TYPES[selectedDevice.kind].name)
+    }
+  }
+
+  if (hubAdded) {
+    //init the websocket connection and set seq to 0. this will add the hub zids to the API device's state.  in addition it will trigger a refresh.
+    //the hubs are always created during a refresh if they do not exist.
+    apiDevice.initialize()
   }
 
   logDebug sectionText
   return dynamicPage(name: "addDevices", title: "Devices Added", nextPage: "mainPage", uninstall: true) {
     if (sectionText != "") {
-      section("IMPORTANT!!!") {
-        paragraph "If you added an Alarm base or Smart Lighting bridge you must now go to that device and click 'Create Devices'.\r\n"
+      section("Please Note!") {
+        paragraph "Alarm base stations, Smart Lighting bridges and all devices connected to them are sub-devices of the API device.\r\n"
       }
       section("Add Ring Device Results:") {
         paragraph sectionText
@@ -657,8 +700,7 @@ def getDeviceIds() {
       logDebug "found a ${node?.kind} at location ${node?.location_id}"
       logTrace "node: ${node}"
       if (DEVICE_TYPES[node?.kind] && selectedLocations.contains(node?.location_id)) {
-        def nodeId = node.kind == "base_station_v1" || node.kind == "beams_bridge_v1" ? RING_API_DNI : node.id
-        acc << [name: "${DEVICE_TYPES[node.kind].name} - ${node.description}", id: nodeId, kind: node.kind]
+        acc << [name: "${DEVICE_TYPES[node.kind].name} - ${node.description}", id: node.id, kind: node.kind]
       }
       acc
       //Stickup Cam - stickup_cam_lunar
@@ -692,84 +734,6 @@ def pollDings() {
   if (dingPolling) {
     runIn(dingInterval, pollDings)
   }
-}
-
-
-private getRING_API_DNI() {
-  return "WS_API_DNI"
-}
-
-def getRINGABLES() {
-  return [
-    "doorbell",
-    "doorbell_v3",
-    "doorbell_v4",
-    "doorbell_v5",
-    "doorbell_portal",
-    "doorbell_scallop_lite",
-    "lpd_v1",
-    "lpd_v2",
-    "jbox_v1"
-  ]
-}
-
-private getDEVICE_TYPES() {
-  return [
-
-    "hp_cam_v1": [name: "Ring Floodlight Cam", driver: "Ring Virtual Light with Siren", dingable: true],
-    "hp_cam_v2": [name: "Ring Spotlight Cam Wired", driver: "Ring Virtual Light with Siren", dingable: true],
-    "floodlight_v2": [name: "Ring Floodlight Cam Wired", driver: "Ring Virtual Light with Siren", dingable: true],
-    "stickup_cam": [name: "Ring Original Stick Up Cam", driver: "Ring Virtual Camera", dingable: true],
-    "stickup_cam_v3": [name: "Ring Stick Up Cam", driver: "Ring Virtual Camera", dingable: true],
-    "stickup_cam_v4": [name: "Ring Spotlight Cam Battery", driver: "Ring Virtual Light", dingable: true],
-    "stickup_cam_lunar": [name: "Ring Stick Up Cam Battery", driver: "Ring Virtual Camera with Siren", dingable: true],
-    "cocoa_camera": [name: "Ring Stick Up Cam Battery", driver: "Ring Virtual Camera with Siren", dingable: true],
-    "stickup_cam_elite": [name: "Ring Stick Up Cam Wired", driver: "Ring Virtual Camera with Siren", dingable: true],
-    "stickup_cam_mini": [name: "Ring Indoor Cam", driver: "Ring Virtual Camera with Siren", dingable: true],
-    "doorbell": [name: "Ring Video Doorbell", driver: "Ring Virtual Camera", dingable: true],
-    "doorbell_v3": [name: "Ring Video Doorbell", driver: "Ring Virtual Camera", dingable: true],
-    "doorbell_v4": [name: "Ring Video Doorbell 2", driver: "Ring Virtual Camera", dingable: true],
-    "doorbell_v5": [name: "Ring Video Doorbell 2", driver: "Ring Virtual Camera", dingable: true],
-    "doorbell_scallop_lite": [name: "Ring Video Doorbell 3", driver: "Ring Virtual Camera", dingable: true],
-    "doorbell_portal": [name: "Ring Peephole Cam", driver: "Ring Virtual Camera", dingable: true],
-    "lpd_v1": [name: "Ring Video Doorbell Pro", driver: "Ring Virtual Camera", dingable: true],
-    "lpd_v2": [name: "Ring Video Doorbell Pro 2", driver: "Ring Virtual Camera", dingable: true],
-    "jbox_v1": [name: "Ring Video Doorbell Elite", driver: "Ring Virtual Camera", dingable: true],
-    "chime": [name: "Ring Chime", driver: "Ring Virtual Chime", dingable: false],
-    "chime_pro": [name: "Ring Chime Pro", driver: "Ring Virtual Chime", dingable: false],
-    "chime_pro_v2": [name: "Ring Chime Pro (v2)", driver: "Ring Virtual Chime", dingable: false],
-    "base_station_v1": [name: "Ring Alarm (API Device)", driver: "Ring API Virtual Device", dingable: false],
-    "beams_bridge_v1": [name: "Ring Bridge (API Device)", driver: "Ring API Virtual Device", dingable: false]
-
-  ]
-}
-
-private getGET() {
-  return 'httpGet'
-}
-
-private getPOST() {
-  return 'httpPost'
-}
-
-private getPUT() {
-  return 'httpPut'
-}
-
-private getJSON() {
-  return 'application/json'
-}
-
-private getTEXT() {
-  return 'text/plain'
-}
-
-private getFORM() {
-  return 'application/x-www-form-urlencoded'
-}
-
-private getALL() {
-  return '*/*'
 }
 
 private getRequests(parts) {
@@ -899,6 +863,42 @@ private getRequests(parts) {
       ],
       query: ["locationID": "${selectedLocations}"]
     ],
+    "mode": [
+      method: POST,
+      type: "bearer",
+      params: [
+        uri: "https://prd-ring-web-us.prd.rings.solutions",
+        path: "/api/v1/mode/location/${getSelectedLocation().id}",
+        query: ["api_version": "11"],
+        contentType: JSON,
+        requestContentType: JSON,
+        body: [
+          "mode": "${parts.mode}", "readOnly": true
+        ]
+      ],
+      headers: [
+        "User-Agent": "android:com.ringapp:3.25.0(26452333)",
+        "Hardware_ID": state.appDeviceId
+      ]
+    ],
+    "mode-settings": [
+      method: GET,
+      type: "bearer",
+      params: [
+        uri: "https://prd-ring-web-us.prd.rings.solutions",
+        path: "/api/v1/mode/location/${getSelectedLocation().id}/settings",
+        query: ["api_version": "11"],
+        contentType: JSON,
+        requestContentType: JSON,
+        body: [
+          "mode": "${parts.mode}", "readOnly": true
+        ]
+      ],
+      headers: [
+        "User-Agent": "android:com.ringapp:3.25.0(26452333)",
+        "Hardware_ID": state.appDeviceId
+      ]
+    ],
     /*
     "refresh-device": [
       method: GET,
@@ -1009,17 +1009,6 @@ private getRequests(parts) {
     //https://cloud.hubitat.com/api/[HUBUID]/apps/[APPID]/devices/all?access_token=[maker access token]
   ]
 }
-
-@Field
-static standardHeaders = [
-  'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36"
-  //,'User-Agent': "Dalvik/2.1.0 (Linux; U; Android 6.0.1; Nexus 7 Build/MOB30X)"
-  //,'User-Agent': "Dalvik/2.1.0 (Linux; U; Android 7.1.2; Nexus 4 Build/NZH54D)"
-  , 'accept-encoding': 'gzip, deflate'
-  , 'Connection': 'keep-alive'
-  //, 'Accept': '*/*'
-]
-
 
 def parse(String description) {
   logDebug "parse(String description)"
@@ -1219,7 +1208,7 @@ def responseHandler(response, params) {
         getChildDevice(getFormattedDNI(deviceInfo.id))?.childParse(params.method, [response: response.getStatus(), msg: deviceInfo])
       }
     }
-    else if (params.method == "device-control" || params.method == "device-set" || params.method == "tickets") {
+    else if (["device-control", "device-set", "tickets", "mode"].contains(params.method)) {
       def body = response.data ? response.getJson() : null
       logTrace "body: $body"
       getChildDevice(params.data.dni).childParse(params.method, [
@@ -1262,6 +1251,21 @@ def responseHandler(response, params) {
         getChildDevice(getFormattedDNI(deviceId))?.childParse(params.method, [response: response.getStatus(), msg: dingInfo])
       }
     }
+    else if (params.method == "mode") {
+      def body = response.getJson()
+      logTrace "body: ${JsonOutput.prettyPrint(JsonOutput.toJson(body))}"
+      log.warn "params $params"
+      //getChildDevice(params.data.dni).
+      /*
+      state.dingables.each { deviceId ->
+        def dingInfo = body.find { it.doorbot_id.toString() == deviceId.toString() }
+        if (dingInfo) {
+          logTrace "Device ${getFormattedDNI(deviceId)} has dingInfo ${dingInfo}"
+        }
+        getChildDevice(getFormattedDNI(deviceId))?.childParse(params.method, [response: response.getStatus(), msg: dingInfo])
+      }
+      */
+    }
     else {
       log.error "Unhandled method!"
       response.properties.each { log.warn it }
@@ -1273,10 +1277,42 @@ def responseHandler(response, params) {
   }
 }
 
+def getAPIDevice(location) {
+  if (!location) {
+    location = getSelectedLocation()
+  }
+  def formattedDNI = RING_API_DNI + "||" + location.id
+  def d = getChildDevice(formattedDNI)
+  if (!d) {
+    def driver = DEVICE_TYPES[RING_API_DNI].driver
+    def data = [
+      "device_id": formattedDNI,
+      "kind": RING_API_DNI,
+      "kind_name": DEVICE_TYPES[RING_API_DNI].name
+    ]
+    d = createDevice(driver, formattedDNI, location.name + " Location", data)
+    d.initialize()
+    d.refresh()
+    logInfo "${DEVICE_TYPES[RING_API_DNI].name} with ID ${formattedDNI} created..."
+  }
+  return d
+}
+
+def createDevice(driver, id, label, data) {
+  return addChildDevice("ring-hubitat-codahq", driver, id, null, ["label": label, "data": data])
+}
+
 def loggedIn() {
   logDebug "loggedIn()"
   logTrace "state.access_token ${state.access_token}"
   return state.access_token && state.access_token != "EMPTY"
+}
+
+def getSelectedLocation() {
+  def loc = state.locationOptions.find { location ->
+    selectedLocations.contains(location.key) || selectedLocations.equals(location.key)
+  }
+  return loc ? [id: loc.key, name: loc.value] : null
 }
 
 //logging help methods
@@ -1312,3 +1348,71 @@ def generateAppDeviceId() {
   logInfo "Device ID generated: ${result}"
   state.appDeviceId = result
 }
+
+def isHub(kind) {
+  return HUB_TYPES.contains(kind)
+}
+
+//Constants
+@Field static def RING_API_DNI = "WS_API_DNI"
+@Field static def GET = "httpGet"
+@Field static def POST = 'httpPost'
+@Field static def PUT = 'httpPut'
+@Field static def JSON = 'application/json'
+@Field static def TEXT = 'text/plain'
+@Field static def FORM = 'application/x-www-form-urlencoded'
+@Field static def ALL = '*/*'
+
+@Field static def RINGABLES = [
+  "doorbell",
+  "doorbell_v3",
+  "doorbell_v4",
+  "doorbell_v5",
+  "doorbell_portal",
+  "doorbell_scallop_lite",
+  "lpd_v1",
+  "lpd_v2",
+  "jbox_v1"
+]
+
+@Field static def standardHeaders = [
+  'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36"
+  //,'User-Agent': "Dalvik/2.1.0 (Linux; U; Android 6.0.1; Nexus 7 Build/MOB30X)"
+  //,'User-Agent': "Dalvik/2.1.0 (Linux; U; Android 7.1.2; Nexus 4 Build/NZH54D)"
+  , 'accept-encoding': 'gzip, deflate'
+  , 'Connection': 'keep-alive'
+  //, 'Accept': '*/*'
+]
+
+@Field static def DEVICE_TYPES = [
+  "WS_API_DNI": [name: "Ring API Virtual Device", driver: "Ring API Virtual Device", dingable: false],
+  "hp_cam_v1": [name: "Ring Floodlight Cam", driver: "Ring Virtual Light with Siren", dingable: true],
+  "hp_cam_v2": [name: "Ring Spotlight Cam Wired", driver: "Ring Virtual Light with Siren", dingable: true],
+  "floodlight_v2": [name: "Ring Floodlight Cam Wired", driver: "Ring Virtual Light with Siren", dingable: true],
+  "stickup_cam": [name: "Ring Original Stick Up Cam", driver: "Ring Virtual Camera", dingable: true],
+  "stickup_cam_v3": [name: "Ring Stick Up Cam", driver: "Ring Virtual Camera", dingable: true],
+  "stickup_cam_v4": [name: "Ring Spotlight Cam Battery", driver: "Ring Virtual Light", dingable: true],
+  "stickup_cam_lunar": [name: "Ring Stick Up Cam Battery", driver: "Ring Virtual Camera with Siren", dingable: true],
+  "cocoa_camera": [name: "Ring Stick Up Cam Battery", driver: "Ring Virtual Camera with Siren", dingable: true],
+  "stickup_cam_elite": [name: "Ring Stick Up Cam Wired", driver: "Ring Virtual Camera with Siren", dingable: true],
+  "stickup_cam_mini": [name: "Ring Indoor Cam", driver: "Ring Virtual Camera with Siren", dingable: true],
+  "doorbell": [name: "Ring Video Doorbell", driver: "Ring Virtual Camera", dingable: true],
+  "doorbell_v3": [name: "Ring Video Doorbell", driver: "Ring Virtual Camera", dingable: true],
+  "doorbell_v4": [name: "Ring Video Doorbell 2", driver: "Ring Virtual Camera", dingable: true],
+  "doorbell_v5": [name: "Ring Video Doorbell 2", driver: "Ring Virtual Camera", dingable: true],
+  "doorbell_scallop_lite": [name: "Ring Video Doorbell 3", driver: "Ring Virtual Camera", dingable: true],
+  "doorbell_portal": [name: "Ring Peephole Cam", driver: "Ring Virtual Camera", dingable: true],
+  "lpd_v1": [name: "Ring Video Doorbell Pro", driver: "Ring Virtual Camera", dingable: true],
+  "lpd_v2": [name: "Ring Video Doorbell Pro 2", driver: "Ring Virtual Camera", dingable: true],
+  "jbox_v1": [name: "Ring Video Doorbell Elite", driver: "Ring Virtual Camera", dingable: true],
+  "chime": [name: "Ring Chime", driver: "Ring Virtual Chime", dingable: false],
+  "chime_pro": [name: "Ring Chime Pro", driver: "Ring Virtual Chime", dingable: false],
+  "chime_pro_v2": [name: "Ring Chime Pro (v2)", driver: "Ring Virtual Chime", dingable: false],
+  "base_station_v1": [name: "Ring Alarm Base Station", driver: "SHOULD NOT SEE THIS", dingable: false],
+  "beams_bridge_v1": [name: "Ring Bridge Hub", driver: "SHOULD NOT SEE THIS", dingable: false]
+]
+
+@Field static def HUB_TYPES = [
+  "base_station_v1",
+  "beams_bridge_v1"
+]
