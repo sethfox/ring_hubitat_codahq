@@ -865,7 +865,7 @@ private getRequests(parts) {
       ],
       query: ["locationID": "${selectedLocations}"]
     ],
-    "mode": [
+    "mode-set": [
       method: POST,
       type: "bearer",
       params: [
@@ -877,6 +877,21 @@ private getRequests(parts) {
         body: [
           "mode": "${parts.mode}", "readOnly": true
         ]
+      ],
+      headers: [
+        "User-Agent": "android:com.ringapp:3.25.0(26452333)",
+        "Hardware_ID": state.appDeviceId
+      ]
+    ],
+    "mode-get": [
+      method: GET,
+      type: "bearer",
+      params: [
+        uri: "https://prd-ring-web-us.prd.rings.solutions",
+        path: "/api/v1/mode/location/${getSelectedLocation()?.id}",
+        query: ["api_version": "11"],
+        contentType: JSON,
+        requestContentType: JSON,
       ],
       headers: [
         "User-Agent": "android:com.ringapp:3.25.0(26452333)",
@@ -1210,7 +1225,7 @@ def responseHandler(response, params) {
         getChildDevice(getFormattedDNI(deviceInfo.id))?.childParse(params.method, [response: response.getStatus(), msg: deviceInfo])
       }
     }
-    else if (["device-control", "device-set", "tickets", "mode"].contains(params.method)) {
+    else if (["device-control", "device-set", "tickets", "mode-set", "mode-get"].contains(params.method)) {
       def body = response.data ? response.getJson() : null
       logTrace "body: $body"
       getChildDevice(params.data.dni).childParse(params.method, [
@@ -1252,21 +1267,6 @@ def responseHandler(response, params) {
         }
         getChildDevice(getFormattedDNI(deviceId))?.childParse(params.method, [response: response.getStatus(), msg: dingInfo])
       }
-    }
-    else if (params.method == "mode") {
-      def body = response.getJson()
-      logTrace "body: ${JsonOutput.prettyPrint(JsonOutput.toJson(body))}"
-      log.warn "params $params"
-      //getChildDevice(params.data.dni).
-      /*
-      state.dingables.each { deviceId ->
-        def dingInfo = body.find { it.doorbot_id.toString() == deviceId.toString() }
-        if (dingInfo) {
-          logTrace "Device ${getFormattedDNI(deviceId)} has dingInfo ${dingInfo}"
-        }
-        getChildDevice(getFormattedDNI(deviceId))?.childParse(params.method, [response: response.getStatus(), msg: dingInfo])
-      }
-      */
     }
     else {
       log.error "Unhandled method!"
