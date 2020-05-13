@@ -55,8 +55,8 @@ metadata {
     input name: "watchDogInterval", type: "number", range: 10..1440, title: "Watchdog Interval", description: "Duration in minutes between checks", defaultValue: 60, required: true
     input name: "suppressMissingDeviceMessages", type: "bool", title: "Suppress log messages for missing/deleted devices", defaultValue: false
     input name: "descriptionTextEnable", type: "bool", title: "Enable descriptionText logging", defaultValue: true
-    input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: true
-    input name: "traceLogEnable", type: "bool", title: "Enable trace logging", defaultValue: true
+    input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: false
+    input name: "traceLogEnable", type: "bool", title: "Enable trace logging", defaultValue: false
   }
 }
 
