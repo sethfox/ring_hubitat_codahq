@@ -83,7 +83,7 @@ preferences {
 }
 
 def login() {
-  //since we're forcing 2FA...
+  //since we're forcing 2FA...  by the way, the two factor toggle is left in on purpose so that people see the change Ring made and it's a cue to hunt up the token
   app.updateSetting("twofactor", [value:"true",type:"bool"])
   dynamicPage(name: "login", title: "Log into Your Ring Account", nextPage: twofactor ? "secondStep" : "locations", uninstall: true) {
     section("Ring Account Information") {
