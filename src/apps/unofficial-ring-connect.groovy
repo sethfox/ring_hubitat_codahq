@@ -870,7 +870,7 @@ private getRequests(parts) {
       type: "bearer",
       params: [
         uri: "https://prd-ring-web-us.prd.rings.solutions",
-        path: "/api/v1/mode/location/${getSelectedLocation().id}",
+        path: "/api/v1/mode/location/${getSelectedLocation()?.id}",
         query: ["api_version": "11"],
         contentType: JSON,
         requestContentType: JSON,
@@ -888,7 +888,7 @@ private getRequests(parts) {
       type: "bearer",
       params: [
         uri: "https://prd-ring-web-us.prd.rings.solutions",
-        path: "/api/v1/mode/location/${getSelectedLocation().id}/settings",
+        path: "/api/v1/mode/location/${getSelectedLocation()?.id}/settings",
         query: ["api_version": "11"],
         contentType: JSON,
         requestContentType: JSON,
