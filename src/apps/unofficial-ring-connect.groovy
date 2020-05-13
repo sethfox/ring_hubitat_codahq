@@ -157,7 +157,7 @@ def mainPage() {
 
     if (location) {
       if (!getAPIDevice(location)) {
-
+        section("There was an issue finding/migrating your API device!  Please check the logs!") {}
       }
       section("Configure Devices For Location:    <b>${location.name}</b>") {
         href "deviceDiscovery", title: "Discover Devices", description: ""
@@ -492,7 +492,7 @@ private discoverDevices() {
   def supportedIds = getDeviceIds()
   logTrace "supportedIds ${supportedIds}"
   state.devices = supportedIds
-  def alarmCapable = state.devices.find { it.kind == "base_station_v1" }?.size() ?: 0 > 0
+  def alarmCapable = (state.devices.find { it.kind == "base_station_v1" }?.size() ?: 0) > 0
   getAPIDevice().setState("alarmCapable", alarmCapable, "bool-set")
 }
 
@@ -636,7 +636,7 @@ def addDevices() {
         else {
           log.warn "Creating a ${DEVICE_TYPES[selectedDevice.kind].name} with dni: ${getFormattedDNI(selectedDevice.id)}"
           def newDevice = addChildDevice("ring-hubitat-codahq", DEVICE_TYPES[selectedDevice.kind].driver, getFormattedDNI(selectedDevice.id), selectedDevice?.hub, [
-            "label": selectedDevice.id == RING_API_DNI ? DEVICE_TYPES[selectedDevice.kind].driver : (selectedDevice?.name ?: DEVICE_TYPES[selectedDevice.kind].name),
+            "label": selectedDevice?.name ?: DEVICE_TYPES[selectedDevice.kind].name,
             "data": [
               "device_id": selectedDevice.id,
               "kind": selectedDevice.kind,
@@ -1286,16 +1286,29 @@ def getAPIDevice(location) {
   def formattedDNI = RING_API_DNI + "||" + location.id
   def d = getChildDevice(formattedDNI)
   if (!d) {
-    def driver = DEVICE_TYPES[RING_API_DNI].driver
-    def data = [
-      "device_id": formattedDNI,
-      "kind": RING_API_DNI,
-      "kind_name": DEVICE_TYPES[RING_API_DNI].name
-    ]
-    d = createDevice(driver, formattedDNI, location.name + " Location", data)
-    d.initialize()
-    d.refresh()
-    logInfo "${DEVICE_TYPES[RING_API_DNI].name} with ID ${formattedDNI} created..."
+    def oldDNI = getChildDevice("RING-WS_API_DNI")
+    //migrate if it's the old DNI
+    if (oldDNI) {
+      oldDNI.deviceNetworkId = formattedDNI
+      oldDNI.updateDataValue("device_id", formattedDNI)
+      oldDNI.updateDataValue("kind", RING_API_DNI)
+      oldDNI.updateDataValue("kind_name", DEVICE_TYPES[RING_API_DNI].name)
+      d = oldDNI
+      log.warn "Migrated existing API device ${oldDNI.label} to new DNI ${formattedDNI}..."
+    }
+    //create otherwise
+    else {
+      def driver = DEVICE_TYPES[RING_API_DNI].driver
+      def data = [
+        "device_id": formattedDNI,
+        "kind": RING_API_DNI,
+        "kind_name": DEVICE_TYPES[RING_API_DNI].name
+      ]
+      d = createDevice(driver, formattedDNI, location.name + " Location", data)
+      d.initialize()
+      d.refresh()
+      logInfo "${DEVICE_TYPES[RING_API_DNI].name} with ID ${formattedDNI} created..."
+    }
   }
   return d
 }
