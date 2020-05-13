@@ -83,6 +83,8 @@ preferences {
 }
 
 def login() {
+  //since we're forcing 2FA...
+  app.updateSetting("twofactor", [value:"true",type:"bool"])
   dynamicPage(name: "login", title: "Log into Your Ring Account", nextPage: twofactor ? "secondStep" : "locations", uninstall: true) {
     section("Ring Account Information") {
       paragraph '<script type="application/javascript">\n' +
