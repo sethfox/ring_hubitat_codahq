@@ -44,7 +44,7 @@ metadata {
     capability "Initialize"
     capability "Refresh"
 
-    //attribute "mode", "string"
+    attribute "mode", "string"
     attribute "websocket", "string"
 
     //command "testCommand"
@@ -95,20 +95,9 @@ def testCommand() {
 
 def setMode(mode) {
   logDebug "setMode(${mode})"
-
   if (!state.alarmCapable) {
-    if (mode == "Disarmed" && device.currentValue("mode") != "off") {
-      parent.simpleRequest("mode", [mode: "disarmed", dni: device.deviceNetworkId])
-    }
-    else if (mode == "Home" && device.currentValue("mode") != "home") {
-      parent.simpleRequest("mode", [mode: "home", dni: device.deviceNetworkId])
-    }
-    else if (mode == "Away" && device.currentValue("mode") != "away") {
-      parent.simpleRequest("mode", [mode: "away", dni: device.deviceNetworkId])
-    }
-    else {
-      logInfo "${device.label} already set to ${mode}.  No change necessary"
-    }
+    //TODO: if we ever get a this pushed to us then only allow to change it when it's different
+    parent.simpleRequest("mode-set", [mode: mode.toLowerCase(), dni: device.deviceNetworkId])
   }
   else {
     def msg = "Not supported from API device. Ring account has alarm present so use alarm modes!"
@@ -183,6 +172,9 @@ def refresh(zid) {
     }
   }
   watchDogChecking()
+  if (!state.alarmCapable) {
+    parent.simpleRequest("mode-get", [mode: "disarmed", dni: device.deviceNetworkId])
+  }
 }
 
 def watchDogChecking() {
@@ -217,8 +209,10 @@ def childParse(type, params = []) {
     //simpleRequest("adduser", [code: params.name, dst: "[HUB_ZID]" /*params.dst*/])
     //simpleRequest("enableuser", [code: params.name, dst: "[HUB_ZID]" /*params.dst*/, acess_code_zid: "[ACCESS_CODE_ZID]"])
   }
-  else if (type == "mode") {
+  else if (type == "mode-set" || type == "mode-get") {
     logTrace "mode: ${params.msg.mode}"
+    logInfo "Mode set to ${params.msg.mode.capitalize()}"
+    sendEvent(name: "mode", value: params.msg.mode)
   }
   else {
     log.error "Unhandled type ${type}"
