@@ -776,7 +776,7 @@ def createDevice(deviceInfo) {
 
       d = addChildDevice("ring-hubitat-codahq", DEVICE_TYPES[deviceInfo.deviceType].name, getFormattedDNI(deviceInfo.zid), data)
       d.label = deviceInfo.name ?: DEVICE_TYPES[deviceInfo.deviceType].name
-      log.warn "Succesfully added ${deviceInfo.deviceType} with dni: ${getFormattedDNI(deviceInfo.zid)}"
+      log.warn "Successfully added ${deviceInfo.deviceType} with dni: ${getFormattedDNI(deviceInfo.zid)}"
     }
     catch (e) {
       if (e.toString().replace(DEVICE_TYPES[deviceInfo.deviceType].name, "") ==
