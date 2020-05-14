@@ -644,7 +644,7 @@ def addDevices() {
             ]
           ])
           newDevice.refresh()
-          sectionText = sectionText + "Succesfully added ${DEVICE_TYPES[selectedDevice.kind].name} with DNI ${getFormattedDNI(selectedDevice.id)} \r\n"
+          sectionText = sectionText + "Successfully added ${DEVICE_TYPES[selectedDevice.kind].name} with DNI ${getFormattedDNI(selectedDevice.id)} \r\n"
         }
       }
       catch (e) {
