@@ -110,7 +110,7 @@ def secondStep() {
     return dynamicPage(name: "secondStep", title: "Authenticate failed!  Please check your Ring username and password", nextPage: "login", uninstall: true) {
     }
   }
-  dynamicPage(name: "secondStep", title: "Check text messages for the 2-step authentication code", nextPage: "locations", uninstall: true) {
+  dynamicPage(name: "secondStep", title: "Check text messages or email for the 2-step authentication code", nextPage: "locations", uninstall: true) {
     section("2-Step Code") {
       input "twoStepCode", "password", title: "Code", description: "2-Step Temporary Code", displayDuringSetup: false, required: true
     }
