@@ -43,7 +43,9 @@
  *              IFTTT page enhancements
  *              Create device enhancements
  *  2020-05-17  Scheduled refresh OAuth token
- *              Cleaned up initialize and scheduling so authentication is valid when polling and getting snapshots after restarts
+ *              Cleaned up initialize and scheduling so polling would persist better after restarts
+ *  2020-05-19  Snapshot (camera thumbnails) support with documentation, polling and configuration links
+ *              Updated user agent on some API calls. This may cause a new device to show logged in under Ring Control Center
  *
  *
  */
