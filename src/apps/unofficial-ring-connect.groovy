@@ -757,7 +757,10 @@ def addDevices() {
       catch (e) {
         if (e.toString().replace(DEVICE_TYPES[selectedDevice.kind].driver, "") ==
           "com.hubitat.app.exception.UnknownDeviceTypeException: Device type '' in namespace 'ring-hubitat-codahq' not found") {
-          sectionText += '<b style="color: red;">The "' + DEVICE_TYPES[selectedDevice.kind].driver + '" driver for device "' + DEVICE_TYPES[selectedDevice.kind].name + '" was not found and needs to be installed.</b>\r\n'
+          def msg = '<b style="color: red;">The "' + DEVICE_TYPES[selectedDevice.kind].driver + '" driver for device "' +
+            DEVICE_TYPES[selectedDevice.kind].name + '" was not found and needs to be installed.</b>\r\n'
+          log.error msg
+          sectionText += msg
         }
         else {
           sectionText = sectionText + "An error occured ${e} \r\n"
