@@ -21,6 +21,7 @@
  *  2019-12-23: Added battery support
  *  2020-02-11: Added second battery support
  *  2020-02-29: Changed namespace
+ *  2020-05-19: Snapshot preference
  *
  */
 
@@ -60,6 +61,7 @@ metadata {
   preferences {
     input name: "lightPolling", type: "bool", title: "Enable polling for light status on this device", defaultValue: false
     input name: "lightInterval", type: "number", range: 10..600, title: "Number of seconds in between light polls", defaultValue: 15
+    input name: "snapshotPolling", type: "bool", title: "Enable polling for thumbnail snapshots on this device", defaultValue: false
     input name: "strobeTimeout", type: "enum", title: "Flash Timeout", options: [[30: "30s"], [60: "1m"], [120: "2m"], [180: "3m"]], defaultValue: 30
     input name: "strobeRate", type: "enum", title: "Flash rate", options: [[1000: "1s"], [2000: "2s"], [5000: "5s"]], defaultValue: 1000
     input name: "discardBatteryLevel", type: "bool", title: "<b>Discard the battery level because this device is plugged in or doesn't support " +
@@ -130,6 +132,7 @@ def pollLight() {
 
 def updated() {
   setupPolling()
+  parent.snapshotOption(device.deviceNetworkId, snapshotPolling)
 }
 
 def on() {
