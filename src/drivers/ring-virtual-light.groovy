@@ -26,6 +26,7 @@
  */
 
 import groovy.json.JsonSlurper
+import groovy.transform.Field
 
 metadata {
   definition(name: "Ring Virtual Light", namespace: "ring-hubitat-codahq", author: "Ben Rimmasch",
@@ -72,6 +73,8 @@ metadata {
     input name: "traceLogEnable", type: "bool", title: "Enable trace logging", defaultValue: false
   }
 }
+
+@Field static def LAST_ACTIVITY_THRESHOLD = 60 //minutes
 
 def canPollLight() {
   return pollLight
@@ -169,14 +172,14 @@ def strobeOff() {
   parent.simpleRequest("device-set", [dni: device.deviceNetworkId, kind: "doorbots", action: "floodlight_light_off"])
 }
 
-
 def childParse(type, params) {
   logDebug "childParse(type, msg)"
   logTrace "type ${type}"
   logTrace "params ${params}"
 
-  sendEvent(name: "lastActivity", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
-
+  if (canReportLastActivity()) {
+    sendEvent(name: "lastActivity", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
+  }
   if (type == "refresh") {
     logTrace "refresh"
     handleRefresh(params.msg)
@@ -192,6 +195,15 @@ def childParse(type, params) {
   else {
     log.error "Unhandled type ${type}"
   }
+}
+
+def canReportLastActivity() {
+  def now = new Date().getTime()
+  if (state.lastActivity == null || now > (state.lastActivity + (LAST_ACTIVITY_THRESHOLD * 60 * 1000))) {
+    state.lastActivity = now
+    return true
+  }
+  return false
 }
 
 private handleRefresh(json) {
