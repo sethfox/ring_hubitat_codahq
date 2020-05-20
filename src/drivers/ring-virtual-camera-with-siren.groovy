@@ -36,10 +36,11 @@ metadata {
     capability "Battery"
 
     command "getDings"
-    command "test"
+    //command "test"
   }
 
   preferences {
+    input name: "snapshotPolling", type: "bool", title: "Enable polling for thumbnail snapshots on this device", defaultValue: false
     input name: "descriptionTextEnable", type: "bool", title: "Enable descriptionText logging", defaultValue: false
     input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: false
     input name: "traceLogEnable", type: "bool", title: "Enable trace logging", defaultValue: false
@@ -82,7 +83,11 @@ def getDings() {
 
 def test() {
   //parent.simpleRequest("history", [dni: device.deviceNetworkId])
-  parent.simpleRequest("snapshot-image", [dni: device.deviceNetworkId])
+  parent.simpleRequest("snapshot-image-tmp", [dni: device.deviceNetworkId])
+}
+
+def updated() {
+  parent.snapshotOption(device.deviceNetworkId, snapshotPolling)
 }
 
 def off(boolean modifyAlarm = true) {
