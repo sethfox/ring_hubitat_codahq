@@ -39,6 +39,7 @@ metadata {
   }
 
   preferences {
+    input name: "snapshotPolling", type: "bool", title: "Enable polling for thumbnail snapshots on this device", defaultValue: false
     input name: "descriptionTextEnable", type: "bool", title: "Enable descriptionText logging", defaultValue: false
     input name: "logEnable", type: "bool", title: "Enable debug logging", defaultValue: false
     input name: "traceLogEnable", type: "bool", title: "Enable trace logging", defaultValue: false
@@ -63,6 +64,7 @@ def configure() {
 
 def updated() {
   checkChanged("numberOfButtons", 1)
+  parent.snapshotOption(device.deviceNetworkId, snapshotPolling)
 }
 
 def parse(String description) {
