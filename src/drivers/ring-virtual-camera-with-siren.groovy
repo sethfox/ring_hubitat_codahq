@@ -19,6 +19,7 @@
  *  2019-11-15: Import URL
  *  2019-12-20: Started tinkering with getting thumbnails
  *  2020-02-29: Changed namespace
+ *  2020-05-19: Snapshot preference
  *
  */
 

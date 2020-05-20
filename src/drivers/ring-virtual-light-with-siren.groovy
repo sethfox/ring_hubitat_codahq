@@ -17,6 +17,7 @@
  *  2019-03-02: Initial
  *  2019-11-15: Import URL
  *  2020-02-29: Changed namespace
+ *  2020-05-19: Snapshot preference
  *
  */
 
