@@ -42,6 +42,8 @@
  *              Changes to make dual app, multi-location available (but not implemented yet)
  *              IFTTT page enhancements
  *              Create device enhancements
+ *  2020-05-17  Scheduled refresh OAuth token
+ *              Cleaned up initialize and scheduling so authentication is valid when polling and getting snapshots after restarts
  *
  *
  */
@@ -77,6 +79,9 @@ preferences {
   page(name: "notifications")
   page(name: "ifttt")
   page(name: "pollingPage")
+  page(name: "snapshots")
+  page(name: "snapshotConfig")
+  page(name: "dashboardHelp")
   page(name: "logging")
   page(name: "hardwareIdReset")
 
@@ -84,8 +89,8 @@ preferences {
 
 def login() {
   //since we're forcing 2FA...  by the way, the two factor toggle is left in on purpose so that people see the change Ring made and it's a cue to hunt up the token
-  app.updateSetting("twofactor", [value:"true",type:"bool"])
-  dynamicPage(name: "login", title: "Log into Your Ring Account", nextPage: /*twofactor ? */"secondStep"/* : "locations"*/, uninstall: true) {
+  app.updateSetting("twofactor", [value: "true", type: "bool"])
+  dynamicPage(name: "login", title: "Log into Your Ring Account", nextPage: /*twofactor ? */ "secondStep"/* : "locations"*/, uninstall: true) {
     section("Ring Account Information") {
       paragraph '<script type="application/javascript">\n' +
         'var checkbox = $("#settings\\\\[twofactor\\\\]");\n' +
@@ -177,6 +182,10 @@ def mainPage() {
       href "notifications", title: "Configure the way that Hubitat will get motion alert and ring events", description: ""
     }
 
+    section("Camera Thumbnail Images") {
+      href "snapshots", title: "Configure the way that Hubitat will get camera thumbnail images", description: ""
+    }
+
     section("Logging") {
       href "logging", title: "Configure logging", description: ""
     }
@@ -186,7 +195,7 @@ def mainPage() {
 
 def notifications() {
   setupDingables()
-  dynamicPage(name: "notifications", title: "Configure the way that Hubitat will get motion alert and ring events:", uninstall: false) {
+  dynamicPage(name: "notifications", title: "Configure the way that Hubitat will get motion alert and ring events:", nextPage: "mainPage", uninstall: false) {
     section("IFTTT (Webhooks)") {
       href "ifttt", title: "IFTTT Information", description: ""
     }
@@ -198,15 +207,7 @@ def notifications() {
 
 def ifttt() {
 
-  def oauthEnabled = true
-  try {
-    if (!state.accessToken) {
-      createAccessToken()
-    }
-  }
-  catch (ex) {
-    oauthEnabled = false
-  }
+  def oauthEnabled = isOAuthEnabled()
 
   setupDingables()
 
@@ -303,23 +304,122 @@ def ifttt() {
 
 def pollingPage() {
 
-  unschedule(pollDings)
-  if (dingPolling) {
-    setupDingables()
-    pollDings()
-  }
+  configureDingPolling()
 
-  dynamicPage(name: "pollingPage", title: "Configure settings to poll for motions and rings:", uninstall: false) {
+  dynamicPage(name: "pollingPage", uninstall: false) {
     section('<b style="color: red; font-size: 22px;">WARNING!!!  ADVERTENCIA!!!  ACHTUNG!!!</b>') {
       paragraph("Polling too quickly can have adverse affects on performance of your hubitat hub and may even get your Ring account temporarily or permanently locked.  As of November 2019 no known action has been taken by Ring to prevent polling but there is no gaurantee of this in the future.")
       paragraph("<u>This is true for not only motion and ring event polling but for light status polling which can be configured on each individual device.</u>")
-      paragraph("<b><u>It is recommended to use the IFTTT method to receive notifcations instead of polling.</u></b>")
+      paragraph("<b>It is recommended to use the IFTTT method to receive notifcations instead of polling.</b>")
     }
-    section("Polling Configuration") {
+    section("<b><u>Configure settings to poll for motions and rings:</u></b>") {
       preferences {
         input name: "dingPolling", type: "bool", title: "Poll for motion and rings", defaultValue: false, submitOnChange: true
         input name: "dingInterval", type: "number", range: "8..20", title: "Number of seconds in between motion/ring polls", defaultValue: 15, submitOnChange: true
       }
+    }
+  }
+}
+
+def snapshots() {
+  dynamicPage(name: "snapshots", title: "Configure the way that Hubitat will get snapshots:", nextPage: "mainPage", uninstall: false) {
+    section("Configuration") {
+      href "snapshotConfig", title: "Snapshot Configuration", description: ""
+    }
+    section("Dashboard Help") {
+      href "dashboardHelp", title: "Documentation for snapshot use in dashboards", description: ""
+    }
+  }
+}
+
+def snapshotConfig() {
+  configureSnapshotPolling()
+  dynamicPage(name: "snapshotConfig", nextPage: "snapshots", uninstall: false) {
+    section('<b style="color: red; font-size: 22px;">WARNING!!!  ADVERTENCIA!!!  ACHTUNG!!!</b>') {
+      paragraph("Retrieving thumbnail images may have adverse affects on performance of your hubitat hub.")
+    }
+    section("<b><u>Configure Settings to Poll for Camera Thumbnail Images:</u></b>") {
+      preferences {
+        input name: "snapshotPolling", type: "bool", title: "Poll for camera thumbnails", defaultValue: false, submitOnChange: true
+        input name: "snapshotInterval", type: "enum", title: "Interval between thumbnail refresh", required: true, options: snapshotInvertals, defaultValue: [120]
+      }
+    }
+  }
+}
+
+def dashboardHelp() {
+  def oauthEnabled = isOAuthEnabled()
+
+  setupDingables()
+
+  def ringables = state.dingables.findAll {
+    RINGABLES.contains(getChildDevice(getFormattedDNI(it)).getDataValue("kind"))
+  }
+
+  if (tokenReset) {
+    app.updateSetting("tokenReset", false)
+    state.accessToken = null
+    createAccessToken()
+  }
+
+  dynamicPage(name: "dashboardHelp", title: '<b style="font-size: 25px;">Snapshots in Dashboards</b>', uninstall: false) {
+    section('<b style="font-size: 22px;">About Snapshot Polling</b>') {
+      paragraph("The snapshots provided by this app will only work when accessing them locally.  The image thumbnails cannot be made available via the cloud for several reasons which will not be discussed here.  If you try to access the dashboards with these images they will only display locally (when on the same network as the hub).")
+      paragraph("Normally Ring only polls your devices for snapshots when an app on your account is open that needs image thumbnails.  For example, new camera thumnails will not be pulled unless you have the dashboard open on the phone app.  Instead of requiring you to have the phone app open all of the time the Hubitat \"Unofficial Ring Connect\" app can get around this by requesting that Ring update the snapshos manually.")
+      paragraph("This has several side effects.  One, your internet usage will go up slightly.  Each thumbnail is approximately 10KB to 20KB and there is additional overhead to request them.  Two, your electrical power usage will go up.  If you have the <a href=\"https://shop.ring.com/pages/protect-plans\">Basic Plan's</a> \"Snapshot Capture\" feature enabled you will not notice much of a difference.  If you do not already have something constantly waking the cameras you may see a noticeable increase.  If the devices are battery powered the period between charges may become significantly smaller.  Three, your hub will be under additional load to pull the images which are very large requests compared to the requests that are typically happening for dashboards and automations.")
+      paragraph("Even though each individual camera has a preference to opt into snapshot polling the refresh will still occur on all eligible cameras.  If polling is enabled at all the cloud will still create a new snapshot for all eligible cameras.  The opt-in option only determines whether or not the Hubitat hub pulls that snapshot from the Ring cloud and stores it in the hub.")
+      if (!oauthEnabled) {
+        paragraph('<b style="color: red;">OATH is not currently enabled under the "OAuth" button in the app code editor for this app.  This is required if you wish to embed images in your dashboards.</b>')
+      }
+      paragraph("Here are the Hubitat DNI (device network IDs) of the devices that are currently opted into snapshot polling:")
+      paragraph(state.snappables.collect { it.key }.join("\n"))
+    }
+    section('<b style="font-size: 22px;">Prerequisites</b>') {
+      paragraph(
+        "- OAuth enabled on this app.  You can do this from the \"Apps Code\" section of the Hubitat UI\n" +
+          "- A device that supports snapshots on the phone app's dashboard\n" +
+          "- The above device(s) must be configured for recording e.g. not in a mode where they do not record\n"
+      )
+    }
+    section('<b style="font-size: 22px;">Steps to include snapshots on a dashboard</b>') {
+      paragraph("These steps must be performed for each of the cameras to be included.")
+      paragraph(
+        "- Just a giant big list of TODO.  I don't wnat to document this right now.\n" +
+          "- Just a giant big list of TODO.  I don't want to document this right now.\n" +
+          "- Just a giant big list of TODO.  I don't want to document this right now.\n" +
+          "- Just a giant big list of TODO.  I don't want to document this right now.\n" +
+          "- Just a giant big list of TODO.  I don't want to document this right now.\n" +
+          "- Just a giant big list of TODO.  I don't want to document this right now.\n"
+      )
+    }
+    section('<b style="font-size: 22px;">Resetting the OAuth Access Token</b>') {
+      paragraph("<b>Do not toggle this button without understanding the following.</b>  Resetting this token will require you to update all of the URLs in any existing dahsboard tile.  There is no need to reset the token unless it was compromised.")
+      preferences {
+        input name: "tokenReset", type: "bool", title: "Toggle this to reset your app's OAuth token", defaultValue: false, submitOnChange: true
+      }
+    }
+    section('<b style="font-size: 22px;">Snapshots and URLs</b>') {
+      def imagePath = "<b>${getLocalApiServerUrl()}/${app.id}/snapshot/[Device ID]?access_token=${atomicState.accessToken}</b>"
+      paragraph(imagePath)
+      paragraph(
+        "The URL breaks down into the following pieces:\n" +
+          "- \"${getLocalApiServerUrl().replace("apps/api", "")}\" -- The local URL to the hub\n" +
+          "- \"apps/api\" -- The path to access the apps API\n" +
+          "- \"${app.id}\" -- The app instance ID of the \"Unofficial Ring Connect\" app. This can also be seen in the URL if you go to the app from the \"Apps\" link in the left navigation pane.\n" +
+          "- [Device ID] - The DNI (device network ID) of the camera from which to pull the snapshot. Do not include the square brackets.\n" +
+          "- The last GUID is the access token created by this app using OAuth that requests will use to authenticate to Hubitat. <b>DO NOT</b> disclose this to anybody.  It is like a password.\n"
+      )
+      paragraph("If the URL above is blank or incomplete then you must enable OAuth for this app under \"Apps Code\" in Hubitat where this app was installed.")
+    }
+    section('<b style="font-size: 22px;">Snapshots</b>') {
+      paragraph(
+        state.snappables.findAll { it.value == true }.collect {
+          def url = "${getLocalApiServerUrl()}/${app.id}/snapshot/${it.key}?access_token=${atomicState.accessToken}"
+          "<u><b>" + getChildDevice(it.key).label + ":</b></u>\n" +
+            "<b>URL</b>: ${url}\n" +
+            "<img height=\"180\" width=\"320\" src=\"${url}\" alt=\"Snapshot\" />"
+        }.join("\n\n")
+      )
     }
   }
 }
@@ -505,12 +605,6 @@ def installed() {
 }
 
 def updated() {
-  unsubscribe()
-  unschedule(pollDings)
-  if (dingPolling) {
-    setupDingables()
-    pollDings()
-  }
   initialize()
 }
 
@@ -535,6 +629,13 @@ def initialize() {
   //def path = "${getFullApiServerUrl()}/notify?access_token=${atomicState.accessToken}"
   //We'll keep this to ourselves for now.  Maybe some day Ring and Hubitat will partner and it will be used
   //log.info "Notification POST Path: ${path}"
+
+  configureDingPolling()
+  configureSnapshotPolling()
+  if (loggedIn()) {
+    //refresh the token if we have one
+    authenticate()
+  }
 }
 
 mappings {
@@ -545,6 +646,10 @@ mappings {
   path("/ifttt") {
     action:
     [POST: "processIFTTT"]
+  }
+  path("/snapshot/:ringDeviceId") {
+    action:
+    [GET: "serveSnapshot"]
   }
 }
 
@@ -721,22 +826,192 @@ def setupDingables() {
   logDebug "setupDingables()"
   state.dingables = []
   getChildDevices().each { d ->
-    logTrace "d's kind: ${d.getDataValue("kind")}"
-    if (d.getDataValue("kind") == null) {
-      d.properties.each { log.warn it }
-    }
+    logTrace "Checking device kind if dingable: ${d.getDataValue("kind")}"
     if (DEVICE_TYPES[d.getDataValue("kind")].dingable) {
       state.dingables << d.getDataValue("device_id")
     }
   }
 }
 
-def pollDings() {
+def configureDingPolling() {
+  unschedule(getDings)
+  if (dingPolling) {
+    setupDingables()
+    runIn(dingInterval, getDings)
+  }
+
+  /*
+  //schedule("0/${dingInterval} * * * * ? *", getDings)
+
   simpleRequest("dings")
   if (dingPolling) {
     runIn(dingInterval, pollDings)
   }
+
+
+  unschedule(pollDings)
+  if (dingPolling) {
+    setupDingables()
+    pollDings()
+  }
+
+  unschedule(pollDings)
+  if (dingPolling) {
+    setupDingables()
+    pollDings()
+  }
+  */
 }
+
+def getDings() {
+  simpleRequest("dings")
+  if (dingPolling) {
+    runIn(dingInterval, getDings)
+  }
+}
+
+def configureSnapshotPolling() {
+  unschedule(getSnapshots)
+  unschedule(getSnapshotsAlt)
+  if (snapshotPolling) {
+    logInfo "Snapshot polling started with an interval of ${snapshotInvertals[snapshotInterval as Integer].toLowerCase()}."
+    setupDingables()
+
+    //let's spread schedules out so that there is some randomness in how we hit the ring api
+    int interval = snapshotInterval != null ? snapshotInterval.toInteger() : 600
+    logTrace "interval: $interval"
+    java.time.LocalDateTime now = java.time.LocalDateTime.now()
+    int currSec = now.getSecond()
+    int altSec = (currSec + 30) > 59 ? currSec - 30 : currSec + 30
+    int currMin = now.getMinute()
+
+    switch (interval) {
+      case 30:
+        def secString = currSec > alt ? "${altSec},${currSec}" : "${currSec},${altSec}"
+        schedule("${secString} * * * * ? *", getSnapshots)
+        break
+      case 60:
+        schedule("${currSec} * * * * ? *", getSnapshots)
+        break
+      case 90:
+        int index = minuteSpans.find { it.value.contains(currMin) }.key
+        int offset = currSec + 30 > 59 ? 1 : 0
+        schedule("${currSec} ${minuteSpans[index].join(",")} * * * ? *", getSnapshots)
+        schedule("${altSec} ${minuteSpans[(index + 1 + offset) % 3].join(",")} * * * ? *", getSnapshotsAlt)
+        break
+      case 120..1800: //minutes
+        int mins = interval / 60
+        schedule("${currSec} ${currMin % mins}/${mins} * * * ? *", getSnapshots)
+        break
+      case 3600..43200: //hours
+        def hours = interval / 60 / 60
+        schedule("${currSec} ${currMin} 0/${hours} * * ? *", getSnapshots)
+        break
+      case 86400: //days
+        schedule("${currSec} ${currMin} ${now.getHour()} 0 * ? *", getSnapshots)
+        break
+    }
+  }
+}
+
+@Field static def minuteSpans = [
+  0: [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57],
+  1: [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46, 49, 52, 55, 58],
+  2: [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35, 38, 41, 44, 47, 50, 53, 56, 59],
+]
+
+def getSnapshots() {
+  logDebug "getSnapshots()"
+
+  //Ring stops asking the cameras for new snapshots if this is not called frequently
+  simpleRequest("snapshot-update")
+
+  state.snappables.each {
+    if (it.value) {
+      def str = simpleRequest("snapshot-image-tmp", [dni: it.key])
+      logTrace "Snapshot for ${it.key} updated"
+      state.snapshots = [:]
+      state.snapshots[(it.key)] = str
+    }
+  }
+}
+
+//used for 90 second interval where two schedules are required. a method is only allowed to be scheduled once. it overwrites the old schedule if scheduled again.
+def getSnapshotsAlt() {
+  getSnapshots()
+}
+
+def serveSnapshot() {
+  logDebug "serveSnapshot()"
+  logTrace "params: $params"
+
+  // Get the device
+  def d = getChildDevice(params.ringDeviceId)
+  if (d == null) {
+    log.error "Could not locate a device with an id of ${params.ringDeviceId}"
+    return ["error": true, "type": "SmartAppException", "message": "Not Found"]
+  }
+
+  byte[] img = state.snapshots[params.ringDeviceId].toArray() as byte[]
+  imageResponse(img)
+}
+
+def imageResponse(byte[] img) {
+
+  /*experimenting. will hopefully work when render allows us to pass binary data or input streams or something
+  render contentType: 'image/jpeg', length: test.length(), data: img
+  render contentType: 'image/jpeg', length: test.length(), data: new String(img, "ISO-8859-1")
+  */
+
+  /* working
+  def html = """
+<!DOCTYPE HTML>
+<html>
+<head><title>Ring Snapshot from Hubitat</title></head>
+<body><img src=\"data:image/png;base64,${img.encodeBase64().toString()}\" alt=\"Snapshot\" /></body>
+</html>
+"""
+  render contentType: "text/html", data: html
+  */
+
+  //onerror=\"this.src='${getFullApiServerUrl()}/snapshot/${child.getDataValue("device_id")}?access_token=${atomicState.accessToken}'; this.onerror=null;\
+
+  /* working. thanks dman */
+  render contentType: "image/svg+xml", data: "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" " +
+    "height=\"360\" width=\"640\"><image width=\"640\" height=\"360\" xlink:href=\"data:image/png;base64,${img.encodeBase64().toString()}\"/></svg>", status: 200
+
+}
+
+def snapshotOption(cam, value) {
+  if (!state.snappables) {
+    state.snappables = [:]
+  }
+  state.snappables[cam] = value
+}
+
+@Field static def snapshotInvertals = [
+  30: "30 Seconds",
+  60: "1 Minute",
+  90: "1.5 Minutes",
+  120: "2 Minutes",
+  180: "3 Minutes",
+  240: "4 Minutes",
+  300: "5 Minutes",
+  360: "6 Minutes",
+  600: "10 Minutes",
+  720: "12 Minutes",
+  900: "15 Minutes",
+  1200: "20 Minutes",
+  1800: "30 Minutes",
+  3600: "1 Hour",
+  7200: "2 Hours",
+  10800: "3 Hours",
+  14400: "4 Hours",
+  21600: "6 Hours",
+  28800: "8 Hours",
+  43200: "12 Hours",
+  86400: "24 Hours"
+]
 
 private getRequests(parts) {
   //logTrace "getRequest(parts)"
@@ -822,11 +1097,8 @@ private getRequests(parts) {
       params: [
         uri: "https://api.ring.com",
         path: "/clients_api/dings/active",
+        query: ["api_version": 11],
         contentType: JSON
-      ],
-      headers: [
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36",
-        "hardware_id": state.appDeviceId
       ]
     ],
     "device-control": [
@@ -997,6 +1269,40 @@ private getRequests(parts) {
         "Accept": "application.vnd.api.v11+json"
       ]
     ],
+    "snapshot-image-tmp": [
+      method: GET,
+      synchronous: true,
+      type: "bearer",
+      params: [
+        uri: "https://api.ring.com",
+        path: "/clients_api/snapshots/image/${getRingDeviceId(parts.dni)}",
+        requestContentType: JSON
+      ],
+      headers: [
+        "Hardware_ID": state.appDeviceId,
+        "Accept": "application.vnd.api.v11+json",
+        'Accept-Encoding': 'gzip, deflate',
+      ]
+    ],
+    "snapshot-update": [
+      method: PUT,
+      synchronous: false,
+      type: "bearer",
+      params: [
+        uri: "https://api.ring.com",
+        path: "/clients_api/snapshots/update_all",
+        requestContentType: JSON,
+        body: [
+          "refresh": true,
+          "doorbot_ids": state.dingables.collect { it -> it.toInteger() }
+        ]
+      ],
+      headers: [
+        "User-Agent": "ring_official_windows/2.4.0",
+        "Hardware_ID": state.appDeviceId,
+        "Accept": "application.vnd.api.v11+json"
+      ]
+    ],
     "subscribe": [
       method: PUT,
       type: "bearer",
@@ -1022,10 +1328,30 @@ private getRequests(parts) {
         path: "/api/v1/rs/masterkey?locationId=${selectedLocations}",
         contentType: JSON
       ]
+    ],
+    "snooze-get": [
+      method: GET,
+      type: "bearer",
+      params: [
+        uri: "https://app.ring.com",
+        path: "notification_settings/v1/locations/${getSelectedLocation()?.id}/snooze/motion",
+        contentType: JSON
+      ]
     ]
     //https://cloud.hubitat.com/api/[HUBUID]/apps/[APPID]/devices/all?access_token=[maker access token]
   ]
 }
+
+@Field static def standardHeaders = [
+  //'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36"
+  //,'User-Agent': "Dalvik/2.1.0 (Linux; U; Android 6.0.1; Nexus 7 Build/MOB30X)"
+  //,'User-Agent': "Dalvik/2.1.0 (Linux; U; Android 7.1.2; Nexus 4 Build/NZH54D)"
+  'User-Agent': 'android:com.ringapp:3.25.0(26452333)',
+  'app_brand': 'ring',
+  'Accept-Encoding': 'gzip, deflate',
+  'Connection': 'Keep-Alive',
+  //, 'Accept': '*/*'
+]
 
 def parse(String description) {
   logDebug "parse(String description)"
@@ -1105,7 +1431,8 @@ def formatParams(request, type, data) {
     query << [api_version: 9, auth_token: state.authentication_token]
   }
   if (request.headers) {
-    headers << request.headers
+    //headers << request.headers
+    request.headers.each { headers[it.key] = it.value }
   }
   params << [headers: headers]
   if (request.query) {
@@ -1193,12 +1520,17 @@ def responseHandler(response, params) {
     if (params.method == "auth") {
       state.access_token = response.data.access_token
       state.refresh_token = response.data.refresh_token
-      logInfo "Authenticated, Token Found."
+      logInfo "Authenticated and token found."
       logDebug "access token: ${state.access_token}"
       logDebug "refresh token: ${state.refresh_token}"
       def result = state.access_token && state.access_token != "EMPTY" && state.refresh_token
       if (result) {
         state.holdRequests = false
+        if (response.data.expires_in && response.data.expires_in.toString().isInteger()) {
+          int interval = response.data.expires_in.toInteger()
+          logInfo "OAuth token expires in ${interval} seconds... Scheduling refresh in ${interval - 10} seconds."
+          runIn(interval - 10, authenticate)
+        }
       }
       return result
     }
@@ -1236,15 +1568,22 @@ def responseHandler(response, params) {
         msg: body
       ])
     }
-    else if (params.method == "snapshot-image") {
-      response.properties.each { log.warn it }
-      getChildDevice(params.data.dni).childParse(params.method, [
-        response: response.getStatus(),
-        action: params.data.action,
-        kind: params.data.params?.kind,
-        //jpg: "data:image/png;base64,${response.data.encodeBase64().toString()}"
-        jpg: "<img src=\"data:image/png;base64,${response.data.encodeBase64().toString()}\" alt=\"Snapshot\" />"
-      ])
+    else if (params.method == "snapshot-update") {
+      logTrace "snapshot-update successful"
+    }
+    else if (params.method == "snapshot-image" || params.method == "snapshot-image-tmp") {
+      byte[] array = new byte[response.data.available()];
+      response.data.read(array);
+
+      return array
+
+      //getChildDevice(params.data.dni).childParse(params.method, [
+      //  response: response.getStatus(),
+      //  action: params.data.action,
+      //  kind: params.data.params?.kind,
+      //jpg: "data:image/png;base64,${response.data.encodeBase64().toString()}"
+      //  jpg: "<img src=\"data:image/png;base64,${response.data.encodeBase64().toString()}\" alt=\"Snapshot\" />"
+      //])
     }
     //else if (params.method == "tickets") {
     //  getChildDevice(data.dni).childParse(type, [response: resp.getStatus(), msg: body])
@@ -1270,7 +1609,6 @@ def responseHandler(response, params) {
     }
     else {
       log.error "Unhandled method!"
-      response.properties.each { log.warn it }
       if (response.data) {
         log.error "Data: ${response.data}"
       }
@@ -1368,6 +1706,19 @@ def isHub(kind) {
   return HUB_TYPES.contains(kind)
 }
 
+def isOAuthEnabled() {
+  def oauthEnabled = true
+  try {
+    if (!state.accessToken) {
+      createAccessToken()
+    }
+  }
+  catch (ex) {
+    oauthEnabled = false
+  }
+  return oauthEnabled
+}
+
 //Constants
 @Field static def RING_API_DNI = "WS_API_DNI"
 @Field static def GET = "httpGet"
@@ -1388,15 +1739,6 @@ def isHub(kind) {
   "lpd_v1",
   "lpd_v2",
   "jbox_v1"
-]
-
-@Field static def standardHeaders = [
-  'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36"
-  //,'User-Agent': "Dalvik/2.1.0 (Linux; U; Android 6.0.1; Nexus 7 Build/MOB30X)"
-  //,'User-Agent': "Dalvik/2.1.0 (Linux; U; Android 7.1.2; Nexus 4 Build/NZH54D)"
-  , 'accept-encoding': 'gzip, deflate'
-  , 'Connection': 'keep-alive'
-  //, 'Accept': '*/*'
 ]
 
 @Field static def DEVICE_TYPES = [
