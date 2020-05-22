@@ -49,7 +49,6 @@ metadata {
 
     //command "testCommand"
     command "setMode", [[name: "Set Mode*", type: "ENUM", description: "Set the Location's mode", constraints: ["Disarmed", "Home", "Away"]]]
-    command "getMode"
   }
 
   preferences {
@@ -97,20 +96,8 @@ def testCommand() {
 def setMode(mode) {
   logDebug "setMode(${mode})"
   if (!state.alarmCapable) {
-    //TODO: if we ever get this pushed to us then only allow change when it's different
+    //TODO: if we ever get a this pushed to us then only allow to change it when it's different
     parent.simpleRequest("mode-set", [mode: mode.toLowerCase(), dni: device.deviceNetworkId])
-  }
-  else {
-    def msg = "Not supported from API device. Ring account has alarm present so use alarm modes!"
-    log.error msg
-    sendEvent(name: "Invalid Command", value: msg)
-  }
-}
-
-def getMode() {
-  logDebug "getMode()"
-  if (!state.alarmCapable) {
-    parent.simpleRequest("mode-get", [dni: device.deviceNetworkId])
   }
   else {
     def msg = "Not supported from API device. Ring account has alarm present so use alarm modes!"
