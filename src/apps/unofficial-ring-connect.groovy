@@ -877,6 +877,7 @@ def getDings() {
 }
 
 def configureSnapshotPolling() {
+  logDebug "configureSnapshotPolling()"
   unschedule(prepSnapshots)
   unschedule(prepSnapshotsAlt)
   unschedule(getSnapshots)
@@ -950,11 +951,15 @@ def prepSnapshotsAlt() {
 def getSnapshots() {
   logDebug "getSnapshots()"
 
+  if (!state.snapshots) {
+    state.snapshots = [:]
+  }
+
   def snappables = state.snappables.findAll { it.value }
   snappables.each {
     def str = simpleRequest("snapshot-image-tmp", [dni: it.key])
     logTrace "Snapshot for ${it.key} updated"
-    //state.snapshots = [:]
+
     state.snapshots[(it.key)] = str
   }
 }
@@ -1571,6 +1576,7 @@ def responseHandler(response, params) {
     else if (params.method == "devices") {
       def body = response.data
       body.doorbots.each { body.stickup_cams << it }
+      body.authorized_doorbots.each { body.stickup_cams << it }
       body.chimes.each { body.stickup_cams << it }
       body.base_stations.each { body.stickup_cams << it }
       body.beams_bridges.each { body.stickup_cams << it }
