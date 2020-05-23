@@ -423,6 +423,17 @@ def dashboardHelp() {
             "<img height=\"180\" width=\"320\" src=\"${url}\" alt=\"Snapshot\" />"
         }.join("\n\n")
       )
+      if (state.snappables.findAll { it.value == true }.size() == 0) {
+        paragraph("<b>There are no cameras configured to poll for snapshots.</b>")
+      }
+      paragraph(
+        "<u>To configure snapshots you may wish to visit the device URLs (local) below</u>:\n" +
+          state.dingables.collect {
+            def d = getChildDevice(getFormattedDNI(it))
+            def url = "${getLocalApiServerUrl().replace("/apps/api", "")}/device/edit/${d.id}"
+            "<a href=\"${url}\" target=\"_blank\">${d.label}</a>"
+          }.join("\n")
+      )
     }
   }
 }
