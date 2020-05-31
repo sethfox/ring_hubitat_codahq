@@ -197,12 +197,12 @@ def mainPage() {
 
 def notifications() {
   setupDingables()
-  dynamicPage(name: "notifications", title: "Configure the way that Hubitat will get motion alert and ring events:", nextPage: "mainPage", uninstall: false) {
-    section("IFTTT (Webhooks)") {
-      href "ifttt", title: "IFTTT Information", description: ""
+  dynamicPage(name: "notifications", title: "Configure the way that Hubitat will get motion alert and ring events.  Choose one of the following methods.  IFTTT is highly preferred.", nextPage: "mainPage", uninstall: false) {
+    section("") {
+      href "ifttt", title: "IFTTT Integration and Documenation for Motion and Ring Alerts", description: ""
     }
-    section("Polling") {
-      href "pollingPage", title: "Configure polling for motion alerts and rings", description: ""
+    section("") {
+      href "pollingPage", title: "Configure Polling for Motion and Ring Alerts", description: ""
     }
   }
 }
