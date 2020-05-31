@@ -263,12 +263,6 @@ def ifttt() {
       )
       paragraph("<b>You must visit <a href=\"https://ifttt.com\" target=\"_blank\">https://ifttt.com</a> to configure the applets.</b>")
     }
-    section('<b style="font-size: 22px;">Resetting the OAuth Access Token</b>') {
-      paragraph("<b>Do not toggle this button without understanding the following.</b>  Resetting this token will require you to update all of the URLs in any existing IFTTT applets.  There is no need to reset the token unless it was compromised.")
-      preferences {
-        input name: "tokenReset", type: "bool", title: "Toggle this to reset your app's OAuth token", defaultValue: false, submitOnChange: true
-      }
-    }
     section('<b style="font-size: 22px;">Webhooks URL</b>') {
       def iftttPath = "<b>${getFullApiServerUrl()}/ifttt?access_token=${atomicState.accessToken}</b>"
       paragraph(iftttPath)
@@ -300,7 +294,12 @@ def ifttt() {
     section('<b style="font-size: 22px;">Example Applet Screenshot</b>') {
       paragraph(screenshotDiv)
     }
-
+    section('<b style="font-size: 22px;">Resetting the OAuth Access Token</b>') {
+      paragraph("<b style=\"color: red;\">Do not toggle this button without understanding the following.</b>  Resetting this token will require you to update all of the URLs in any existing IFTTT applets <b>AS WELL AS</b> any snapshot URL in snapshot dashboard tiles.  There is no need to reset the token unless it was compromised.")
+      preferences {
+        input name: "tokenReset", type: "bool", title: "Toggle this to reset your app's OAuth token", defaultValue: false, submitOnChange: true
+      }
+    }
   }
 }
 
@@ -309,7 +308,7 @@ def pollingPage() {
   configureDingPolling()
 
   dynamicPage(name: "pollingPage", uninstall: false) {
-    section('<b style="color: red; font-size: 22px;">WARNING!!!  ADVERTENCIA!!!  ACHTUNG!!!</b>') {
+    section('<b style="color: red; font-size: 22px;">WARNING!!  ADVERTENCIA!!  ACHTUNG!!  AVERTISSEMENT!!</b>') {
       paragraph("Polling too quickly can have adverse affects on performance of your hubitat hub and may even get your Ring account temporarily or permanently locked.  As of November 2019 no known action has been taken by Ring to prevent polling but there is no gaurantee of this in the future.")
       paragraph("<u>This is true for not only motion and ring event polling but for light status polling which can be configured on each individual device.</u>")
       paragraph("<b>It is recommended to use the IFTTT method to receive notifcations instead of polling.</b>")
@@ -324,12 +323,12 @@ def pollingPage() {
 }
 
 def snapshots() {
-  dynamicPage(name: "snapshots", title: "Configure the way that Hubitat will get snapshots:", nextPage: "mainPage", uninstall: false) {
-    section("Configuration") {
+  dynamicPage(name: "snapshots", title: "Camera Thumbnail Images:", nextPage: "mainPage", uninstall: false) {
+    section("") {
       href "snapshotConfig", title: "Snapshot Configuration", description: ""
     }
-    section("Dashboard Help") {
-      href "dashboardHelp", title: "Documentation for snapshot use in dashboards", description: ""
+    section("") {
+      href "dashboardHelp", title: "Viewing Snapshots and Dashboard Configuration", description: ""
     }
   }
 }
@@ -337,7 +336,7 @@ def snapshots() {
 def snapshotConfig() {
   configureSnapshotPolling()
   dynamicPage(name: "snapshotConfig", nextPage: "snapshots", uninstall: false) {
-    section('<b style="color: red; font-size: 22px;">WARNING!!!  ADVERTENCIA!!!  ACHTUNG!!!</b>') {
+    section('<b style="color: red; font-size: 22px;">WARNING!!  ADVERTENCIA!!  ACHTUNG!!  AVERTISSEMENT!!</b>') {
       paragraph("Retrieving thumbnail images may have adverse affects on performance of your hubitat hub.")
     }
     section("<b><u>Configure Settings to Poll for Camera Thumbnail Images:</u></b>") {
@@ -368,19 +367,19 @@ def dashboardHelp() {
     section('<b style="font-size: 22px;">About Snapshot Polling</b>') {
       paragraph("The snapshots provided by this app will only work when accessing them locally.  The image thumbnails cannot be made available via the cloud for several reasons which will not be discussed here.  If you try to access the dashboards with these images they will only display locally (when on the same network as the hub).")
       paragraph("Normally Ring only polls your devices for snapshots when an app on your account is open that needs image thumbnails.  For example, new camera thumnails will not be pulled unless you have the dashboard open on the phone app.  Instead of requiring you to have the phone app open all of the time the Hubitat \"Unofficial Ring Connect\" app can get around this by requesting that Ring update the snapshos manually.")
-      paragraph("This has several side effects.  One, your internet usage will go up slightly.  Each thumbnail is approximately 10KB to 20KB and there is additional overhead to request them.  Two, your electrical power usage will go up.  If you have the <a href=\"https://shop.ring.com/pages/protect-plans\">Basic Plan's</a> \"Snapshot Capture\" feature enabled you will not notice much of a difference.  If you do not already have something constantly waking the cameras you may see a noticeable increase.  If the devices are battery powered the period between charges may become significantly smaller.  Three, your hub will be under additional load to pull the images which are very large requests compared to the requests that are typically happening for dashboards and automations.")
-      paragraph("Even though each individual camera has a preference to opt into snapshot polling the refresh will still occur on all eligible cameras.  If polling is enabled at all the cloud will still create a new snapshot for all eligible cameras.  The opt-in option only determines whether or not the Hubitat hub pulls that snapshot from the Ring cloud and stores it in the hub.")
+      paragraph("This has several side effects.")
+      paragraph("One, internet usage will go up very slightly.  Each thumbnail is approximately 10KB to 20KB and there is additional overhead to request them.  This is very likely no where near enough to worry about ISP bandwidth caps but it is something to be aware of.")
+      paragraph("Two, your electrical power usage will go up.  If you have the <a href=\"https://shop.ring.com/pages/protect-plans\">Basic Plan's</a> \"Snapshot Capture\" feature enabled you will not notice much of a difference.  If you do not already have something constantly waking the cameras you may see a noticeable increase.  If the devices are battery powered the period between charges may become significantly smaller.")
+      paragraph("Three, your hub will be under additional load to pull the images which are very large requests compared to the requests that are typically happening for dashboards and automations.  This is likely the primary factor to consider when deciding whether or not to enable snapshot polling and usage.  The additional load, especially if dashboards are left open, may be enough to leave some hub configurations sluggish.")
       if (!oauthEnabled) {
         paragraph('<b style="color: red;">OATH is not currently enabled under the "OAuth" button in the app code editor for this app.  This is required if you wish to embed images in your dashboards.</b>')
       }
-      paragraph("Here are the Hubitat DNI (device network IDs) of the devices that are currently opted into snapshot polling:")
-      paragraph(state.snappables.collect { it.key }.join("\n"))
     }
     section('<b style="font-size: 22px;">Prerequisites</b>') {
       paragraph(
         "- OAuth enabled on this app.  You can do this from the \"Apps Code\" section of the Hubitat UI\n" +
           "- A device that supports snapshots on the phone app's dashboard\n" +
-          "- The above device(s) must be configured for recording e.g. not in a mode where they do not record\n"
+          "- Images will only be available when the cameras are able to display snapshots in the Ring app's \"Dashboard\" view. This can be configured in the Ring app's Mode settings or on the individual camera's device settings.\n"
       )
     }
     section('<b style="font-size: 22px;">Steps to include snapshots on a dashboard</b>') {
@@ -395,11 +394,17 @@ def dashboardHelp() {
           "- Click the \"Add Tile\" button."
       )
     }
-    section('<b style="font-size: 22px;">Resetting the OAuth Access Token</b>') {
-      paragraph("<b>Do not toggle this button without understanding the following.</b>  Resetting this token will require you to update all of the URLs in any existing dahsboard tile.  There is no need to reset the token unless it was compromised.")
-      preferences {
-        input name: "tokenReset", type: "bool", title: "Toggle this to reset your app's OAuth token", defaultValue: false, submitOnChange: true
-      }
+    section('<b style="font-size: 22px;">Required Device Configurations</b>') {
+      paragraph("Here are the Hubitat DNI (device network IDs) of the devices that are currently opted into snapshot polling:")
+      paragraph(state.snappables.collect { it.key }.join("\n"))
+      paragraph(
+        "<u>To configure snapshots you will need to activate \"Enable polling for thumbnail snapshots on this device\" for the device you want to see. The links below will bring you to the device configuration pages</u>:\n\n" +
+          state.dingables.collect {
+            def d = getChildDevice(getFormattedDNI(it))
+            def url = "${getLocalApiServerUrl().replace("/apps/api", "")}/device/edit/${d.id}"
+            "<a href=\"${url}\" target=\"_blank\">${d.label}</a>"
+          }.join("\n")
+      )
     }
     section('<b style="font-size: 22px;">Snapshots and URLs</b>') {
       def imagePath = "<b>${getLocalApiServerUrl()}/${app.id}/snapshot/[Device ID]?access_token=${atomicState.accessToken}</b>"
@@ -426,14 +431,12 @@ def dashboardHelp() {
       if (state.snappables.findAll { it.value == true }.size() == 0) {
         paragraph("<b>There are no cameras configured to poll for snapshots.</b>")
       }
-      paragraph(
-        "<u>To configure snapshots you may wish to visit the device URLs (local) below</u>:\n" +
-          state.dingables.collect {
-            def d = getChildDevice(getFormattedDNI(it))
-            def url = "${getLocalApiServerUrl().replace("/apps/api", "")}/device/edit/${d.id}"
-            "<a href=\"${url}\" target=\"_blank\">${d.label}</a>"
-          }.join("\n")
-      )
+    }
+    section('<b style="font-size: 22px;">Resetting the OAuth Access Token</b>') {
+      paragraph("<b style=\"color: red;\">Do not toggle this button without understanding the following.</b>  Resetting this token will require you to update all of the URLs in any existing dashboard tile <b>AS WELL AS</b> any URL in any IFTTT applet you have configured.  There is no need to reset the token unless it was compromised.")
+      preferences {
+        input name: "tokenReset", type: "bool", title: "Toggle this to reset your app's OAuth token", defaultValue: false, submitOnChange: true
+      }
     }
   }
 }
@@ -1542,6 +1545,7 @@ def doSynchronousAction(type, method, params) {
     }
     else {
       log.warn "HTTP Exception received on ${type}"
+      log.warn "method: $method with params $params"
       log.warn "exception: ${ex} cause: ${ex.getCause()}"
     }
   }
@@ -1575,8 +1579,8 @@ def responseHandler(response, params) {
         state.holdRequests = false
         if (response.data.expires_in && response.data.expires_in.toString().isInteger()) {
           int interval = response.data.expires_in.toInteger()
-          logInfo "OAuth token expires in ${interval} seconds... Scheduling refresh in ${interval - 10} seconds."
-          runIn(interval - 10, authenticate)
+          logInfo "OAuth token expires in ${interval} seconds... Scheduling refresh in ${interval - 20} seconds."
+          runIn(interval - 20, authenticate)
         }
       }
       return result
