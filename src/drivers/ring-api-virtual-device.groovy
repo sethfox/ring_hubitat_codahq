@@ -24,6 +24,7 @@
  *  2020-02-29: Support for Retrofit Alarm Kit
  *              Supressed more websocket nonsense logging errors
  *              Changed namespace
+ *  2020-06-02: Support panic button
  *
  */
 
@@ -749,6 +750,7 @@ private getDEVICE_TYPES() {
     "siren": [name: "Ring Virtual Siren", hidden: false],
     "switch": [name: "Ring Virtual Switch", hidden: false],
     "bridge.flatline": [name: "Ring Virtual Retrofit Alarm Kit", hidden: false],
+    "security-panic": [name: "Ring Virtual Panic Button", hidden: false],
     //virtual alarm devices
     "adapter.zwave": [name: "Ring Z-Wave Adapter", hidden: true],
     "adapter.zigbee": [name: "Ring Zigbee Adapter", hidden: true],
@@ -793,4 +795,3 @@ private getIGNORED_MSG_TYPES() {
     "SubscriptionTopicsInfo"
   ]
 }
-
