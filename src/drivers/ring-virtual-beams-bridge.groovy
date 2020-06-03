@@ -18,6 +18,7 @@
  *  2019-11-15: Import URL
  *  2020-02-29: Added checkin event
  *              Changed namespace
+ *  2020-06-02: Fixed typo in assigning lastCommTime
  *
  */
 
@@ -78,7 +79,7 @@ def setValues(deviceInfo) {
     sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
   }
   if (deviceInfo.lastCommTime) {
-    state.signalStrength = deviceInfo.lastCommTime
+    state.lastCommTime = deviceInfo.lastCommTime
   }
   if (deviceInfo.state?.networks?.wlan0) {
     if (deviceInfo.state?.networks?.wlan0.ssid) {

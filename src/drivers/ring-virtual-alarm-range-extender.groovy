@@ -21,6 +21,7 @@
  *              Changed namespace
  *  2020-05-06: Added "PowerSource" capability
  *              Changed acStatus values to match closer to Ring's documentation labels for those alerts
+ *  2020-06-02: Fixed typo in assigning lastCommTime
  *
  */
 
@@ -91,7 +92,7 @@ def setValues(deviceInfo) {
     }
   }
   if (deviceInfo.lastCommTime) {
-    state.signalStrength = deviceInfo.lastCommTime
+    state.lastCommTime = deviceInfo.lastCommTime
   }
   if (deviceInfo.nextExpectedWakeup) {
     state.nextExpectedWakeup = deviceInfo.nextExpectedWakeup

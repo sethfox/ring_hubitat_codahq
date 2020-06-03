@@ -19,6 +19,7 @@
  *              Made some guesses on how the alarm component of this actually works
  *  2020-02-29: Added checkin event
  *              Changed namespace
+ *  2020-06-02: Fixed typo in assigning lastCommTime
  *
  */
 
@@ -95,7 +96,7 @@ def setValues(deviceInfo) {
     }
   }
   if (deviceInfo.lastCommTime) {
-    state.signalStrength = deviceInfo.lastCommTime
+    state.lastCommTime = deviceInfo.lastCommTime
   }
   if (deviceInfo.nextExpectedWakeup) {
     state.nextExpectedWakeup = deviceInfo.nextExpectedWakeup

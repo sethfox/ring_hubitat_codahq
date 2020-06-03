@@ -20,6 +20,7 @@
  *  2020-01-09: Fixed update to HSM status to only happen when necessary
  *              Added fireAlarm attribute to hold fire alarm status
  *  2020-02-29: Changed namespace
+ *  2020-06-02: Fixed typo in assigning lastCommTime
  *
  */
 
@@ -301,7 +302,7 @@ def setValues(deviceInfo) {
     state.impulseType = deviceInfo.impulseType
   }
   if (deviceInfo.lastCommTime) {
-    state.signalStrength = deviceInfo.lastCommTime
+    state.lastCommTime = deviceInfo.lastCommTime
   }
   if (deviceInfo.nextExpectedWakeup) {
     state.nextExpectedWakeup = deviceInfo.nextExpectedWakeup

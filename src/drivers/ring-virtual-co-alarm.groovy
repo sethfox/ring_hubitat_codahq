@@ -17,6 +17,7 @@
  *  2019-12-20: Initial
  *  2020-02-12: Fixed battery % to show correctly in dashboards
  *  2020-02-29: Changed namespace
+ *  2020-06-02: Fixed typo in assigning lastCommTime
  *
  */
 
@@ -80,7 +81,7 @@ def setValues(deviceInfo) {
     state.impulseType = deviceInfo.impulseType
   }
   if (deviceInfo.lastCommTime) {
-    state.signalStrength = deviceInfo.lastCommTime
+    state.lastCommTime = deviceInfo.lastCommTime
   }
   if (deviceInfo.nextExpectedWakeup) {
     state.nextExpectedWakeup = deviceInfo.nextExpectedWakeup

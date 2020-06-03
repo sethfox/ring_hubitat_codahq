@@ -18,6 +18,7 @@
  *  2019-11-15: Import URL
  *  2020-02-12: Fixed odd behavior for when a group is added that has a member that isn't created
  *  2020-02-29: Changed namespace
+ *  2020-06-02: Fixed typo in assigning lastCommTime
  *
  */
 
@@ -90,7 +91,7 @@ def setValues(deviceInfo) {
     state.impulseType = deviceInfo.impulseType
   }
   if (deviceInfo.lastCommTime) {
-    state.signalStrength = deviceInfo.lastCommTime
+    state.lastCommTime = deviceInfo.lastCommTime
   }
   if (deviceInfo.state?.groupMembers) {
     state.members = deviceInfo.state?.groupMembers.collectEntries {

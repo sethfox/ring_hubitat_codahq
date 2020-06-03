@@ -15,6 +15,7 @@
  *
  *  Change Log:
  *  2020-02-29: Initial
+ *  2020-06-02: Fixed typo in assigning lastCommTime
  *
  */
 

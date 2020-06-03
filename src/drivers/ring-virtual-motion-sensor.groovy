@@ -19,6 +19,7 @@
  *  2020-02-12: Fixed battery % to show correctly in dashboards
  *  2020-02-29: Added checkin event
  *              Changed namespace
+ *  2020-06-02: Fixed typo in assigning lastCommTime
  *
  */
 
