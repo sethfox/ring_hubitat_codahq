@@ -71,7 +71,7 @@ def refresh() {
   //parent.simpleRequest("refresh-device", [dni: device.deviceNetworkId])
 }
 
-def on(duration = 60) {
+def on(duration = 0) {
   logDebug "Attempting to turn the light on."
   def data = ["lightMode": "on", "duration": duration]
   parent.simpleRequest("setcommand", [type: "light-mode.set", zid: device.getDataValue("zid"), dst: device.getDataValue("src"), data: data])
